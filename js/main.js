@@ -52,6 +52,5 @@ window.onload = function() {
     // Update the date and time immediately, then every second
     updateDateTime();
     setInterval(updateDateTime, 1000);
-    };
 
 };
