@@ -16,4 +16,23 @@ window.onload = function() {
         // Move to the next color, or go back to the first color if we've gone through them all
         i = (i + 1) % colors.length;
     });
+    
+    document.getElementById('themeToggle').addEventListener('click', function() {
+    var body = document.body;
+    var newTheme = '';
+    var buttonText = '';
+
+    if (body.classList.contains('light-theme')) {
+        body.classList.remove('light-theme');
+        body.classList.add('dark-theme');
+        newTheme = 'Light';
+    } else {
+        body.classList.remove('dark-theme');
+        body.classList.add('light-theme');
+        newTheme = 'Dark';
+    }
+
+    this.textContent = 'Switch to ' + newTheme + ' Mode';
+    });
+
 };
