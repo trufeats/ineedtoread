@@ -34,5 +34,24 @@ window.onload = function() {
 
     this.textContent = 'Switch to ' + newTheme + ' Mode';
     });
+    
+       var dateTimeDisplay = document.getElementById('dateTimeDisplay');
+
+    // Function to update the date and time
+    function updateDateTime() {
+        // Get the current date and time
+        var now = new Date();
+
+        // Format the date and time as a string
+        var dateTimeString = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+
+        // Display the date and time
+        dateTimeDisplay.textContent = dateTimeString;
+    }
+
+    // Update the date and time immediately, then every second
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+    };
 
 };
