@@ -1,0 +1,8 @@
+{
+  "name": "term-planner",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  }
+}
