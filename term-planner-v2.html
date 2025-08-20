@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Term Planner V2</title>
+<title>Term Planner v3</title>
 <style>
 :root{--ink:#e8ecef;--muted:#9aa4ad;--panel:#1a1d21;--panel-2:#20242a;--border:#6b7280;--barrier:#fff;--c-charcoal:#2f3136;--c-red:#e53935;--c-orange:#fb8c00;--c-yellow:#f6d743;--c-green:#43a047;--c-blue:#1e88e5;--c-purple:#8e24aa;--bg-light:#f5f7fb;--ink-light:#0e1116;--panel-light:#ffffff;--panel-2-light:#eef2f7;--border-light:#cfd6e0}
 .light{--barrier:#000}
@@ -106,7 +106,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 </head>
 <body>
 <header class="app-header">
-  <div class="app-title">Term Planner V2</div>
+  <div class="app-title">Term Planner v3</div>
   <div id="monthRange" class="hint"></div>
 </header>
 
@@ -116,7 +116,8 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
   <button id="themeToggle" class="btn" title="Toggle light/dark">☀️ / 🌙</button>
   
   <button id="ieToggle" class="btn" title="Import / Export">⇄ Import/Export</button>
-  
+  <button id="termsTxtBtn" class="btn" title="Export term summary">Export Summary</button>
+
 </div>
 
   <div class="toolbar" style="margin-top:0">
@@ -165,7 +166,6 @@ const monthSections=new Map(),monthOrder=[];
 let shownStartIdx=0,shownEndIdx=0;
 let prevMonthBtn=null,nextMonthBtn=null;
 const GLIMMER_PERIOD=3.2,glimmerBase=performance.now(); let glimmerFlip=false;
-const TERM_BOX_MARGIN=40;
 
 function buildDays(){
   const s=new Date(Date.UTC(BUILD_START.y,BUILD_START.m,1));
@@ -268,6 +268,8 @@ function countsInRange(start,end){
 function nonZeroSorted(counts){const order=Object.fromEntries(COLORS.map((c,i)=>[c.key,i]));return Object.entries(counts).filter(([,v])=>v>0).sort((a,b)=>order[a[0]]-order[b[0]])}
 function getCSSVar(key){const s=getComputedStyle(document.documentElement);return({charcoal:'--c-charcoal',red:'--c-red',orange:'--c-orange',yellow:'--c-yellow',green:'--c-green',blue:'--c-blue',purple:'--c-purple'}[key]||'')?s.getPropertyValue({charcoal:'--c-charcoal',red:'--c-red',orange:'--c-orange',yellow:'--c-yellow',green:'--c-green',blue:'--c-blue',purple:'--c-purple'}[key]):'transparent'}
 function buildCountsList(counts){const wrap=document.createElement('div');wrap.className='counts';const arr=nonZeroSorted(counts);if(arr.length===0){const none=document.createElement('div');none.className='hint';none.textContent='No colored cells in this term yet';wrap.appendChild(none);return wrap}for(const [key,val] of arr){const row=document.createElement('div');row.className='count-row';const sw=document.createElement('div');sw.className='swatch';sw.style.background=getCSSVar(key);const label=document.createElement('div');label.className='label';label.contentEditable='true';label.dataset.colorKey=key;label.textContent=colorLabels[key];label.setAttribute('placeholder',key);const num=document.createElement('div');num.textContent=val;label.addEventListener('input',()=>{colorLabels[key]=label.textContent||'';document.querySelectorAll(`.label[data-color-key="${key}"]`).forEach(el=>{if(el!==label)el.textContent=colorLabels[key]})});row.appendChild(sw);row.appendChild(label);row.appendChild(num);wrap.appendChild(row)}return wrap}
+function buildTermsReport(){const lines=['Terms Summary',''];const sorted=[...barrierBoxes.entries()].sort((a,b)=>a[0]-b[0]);for(const [pos,b] of sorted){const {start,end}=segmentFor(pos);const title=(b.title||'Untitled Term');lines.push(title);lines.push('----------------');const hols=[];for(let i=start;i<=end;i++){if(days[i].isHoliday){const d=days[i].date;hols.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}));}}lines.push('Holidays: '+(hols.length?hols.join(', '):'None'));const counts=countsInRange(start,end);for(const [key,val] of nonZeroSorted(counts)){lines.push(`${colorLabels[key]||key}: ${val}`);}lines.push('');}return lines.join('\n');}
+function downloadTxt(name,txt){const a=document.createElement('a');const blob=new Blob([txt],{type:'text/plain'});a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);}
 function createBoxForBarrier(pos){const {start,end}=segmentFor(pos),box=document.createElement('article');box.className='box';box.dataset.pos=String(pos);const header=document.createElement('div');header.className='box-header';const focus=document.createElement('div');focus.className='focus-toggle';const title=document.createElement('div');title.className='box-title';title.contentEditable='true';title.setAttribute('placeholder','Term title');const close=document.createElement('button');close.className='box-close';close.innerHTML='&times;';header.appendChild(focus);header.appendChild(title);header.appendChild(close);const body=document.createElement('div');body.className='box-body';body.appendChild(buildCountsList(countsInRange(start,end)));box.appendChild(header);box.appendChild(body);const rsH=document.createElement('div');rsH.className='resize-handle';box.appendChild(rsH);
 // drag
 let drag={on:false,x:0,y:0,l:0,t:0};header.addEventListener('mousedown',e=>{drag.on=true;box.style.cursor='grabbing';drag.x=e.clientX;drag.y=e.clientY;const r=box.getBoundingClientRect(),wr=wrap.getBoundingClientRect();drag.l=r.left-wr.left;drag.t=r.top-wr.top;document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp,{once:true})});box.addEventListener('mousedown',e=>{if(!e.shiftKey||e.target.closest('.resize-handle'))return;drag.on=true;box.style.cursor='grabbing';drag.x=e.clientX;drag.y=e.clientY;const r=box.getBoundingClientRect(),wr=wrap.getBoundingClientRect();drag.l=r.left-wr.left;drag.t=r.top-wr.top;document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp,{once:true})});function onMove(e){if(!drag.on)return;box.style.left=(drag.l+e.clientX-drag.x)+'px';box.style.top=(drag.t+e.clientY-drag.y)+'px';const b=barrierBoxes.get(pos);if(b)b.isDragged=true}function onUp(){drag.on=false;box.style.cursor='';document.removeEventListener('mousemove',onMove)}
@@ -281,7 +283,7 @@ close.addEventListener('click',()=>{const b=barrierBoxes.get(pos);if(b&&b.focusO
 let rs={on:false,x:0,y:0,w:0,h:0};rsH.addEventListener('mousedown',e=>{e.preventDefault();rs.on=true;rs.x=e.clientX;rs.y=e.clientY;const r=box.getBoundingClientRect();rs.w=r.width;rs.h=r.height;document.addEventListener('mousemove',onRM);document.addEventListener('mouseup',onRU,{once:true})});function onRM(e){if(!rs.on)return;box.style.width=Math.max(240,rs.w+e.clientX-rs.x)+'px';box.style.height=Math.max(140,rs.h+e.clientY-rs.y)+'px'}function onRU(){rs.on=false;document.removeEventListener('mousemove',onRM)}wrap.appendChild(box);return{el:box,title:'',isDragged:false,focusOn:false,closed:false}}
 function toggleBarrier(pos){if(barriers.has(pos)){barriers.delete(pos);updateDayBorders(pos);const b=barrierBoxes.get(pos);if(b){if(b.focusOn)clearFocus();b.el.remove();barrierBoxes.delete(pos)}recalcAllBoxes();refreshTermsLegend()}else{barriers.add(pos);updateDayBorders(pos);const box=createBoxForBarrier(pos);barrierBoxes.set(pos,box);recalcAllBoxes();positionBox(pos);refreshTermsLegend()}}
 function recalcAllBoxes(){for(const [pos,b] of barrierBoxes){const {start,end}=segmentFor(pos),body=b.el.querySelector('.box-body');body.innerHTML='';body.appendChild(buildCountsList(countsInRange(start,end)))} }
-function positionBox(pos){const b=barrierBoxes.get(pos);if(!b||b.isDragged)return;const day=dayEls[pos-1];if(!day)return;const monthEl=day.closest('.month');if(!monthEl)return;const wr=wrap.getBoundingClientRect(),mr=monthEl.getBoundingClientRect();b.el.style.left=(mr.left-wr.left+8)+'px';b.el.style.top=(mr.bottom-wr.top+TERM_BOX_MARGIN)+'px';}
+function positionBox(pos){const b=barrierBoxes.get(pos);if(!b||b.isDragged)return;const day=dayEls[pos-1];if(!day)return;const monthEl=day.closest('.month');if(!monthEl)return;const wr=wrap.getBoundingClientRect(),mr=monthEl.getBoundingClientRect();requestAnimationFrame(()=>{const bb=b.el.getBoundingClientRect();b.el.style.left=(mr.left-wr.left+(mr.width-bb.width)/2)+'px';b.el.style.top=(mr.top-wr.top+(mr.height-bb.height)/2)+'px';});}
 function setFocus(pos){clearFocus();const b=barrierBoxes.get(pos);if(!b)return;const {start,end}=segmentFor(pos);for(let i=0;i<days.length;i++){if(i<start||i>end)dayEls[i].classList.add('hiddenOutside')}b.focusOn=true;activeFocusPos=pos;document.querySelectorAll('.focus-toggle').forEach(x=>x.classList.remove('on'));b.el.querySelector('.focus-toggle').classList.add('on')}
 function clearFocus(){for(const el of dayEls)el.classList.remove('hiddenOutside');if(activeFocusPos!=null){const b=barrierBoxes.get(activeFocusPos);if(b){b.focusOn=false;const t=b.el.querySelector('.focus-toggle');if(t)t.classList.remove('on')}}activeFocusPos=null}
 function nextBarrierAfter(idx){const s=[...barriers].sort((a,b)=>a-b);for(const p of s)if(p>idx)return p;return null}
