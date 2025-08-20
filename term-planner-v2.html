@@ -24,10 +24,12 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .btn{appearance:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--ink);padding:6px 10px;border-radius:10px;cursor:pointer}
 .btn:hover{background:rgba(255,255,255,.09)}
 
-.global-bar{max-width:340px;margin:0 auto 12px;padding:4px;display:none;border-radius:12px;}
+.global-bar{max-width:400px;margin:0 auto 12px;padding:6px;display:none;border-radius:12px;}
 .global-bar.open{display:block;animation:rainbow 8s linear infinite;background:linear-gradient(90deg,#e53935,#fb8c00,#f6d743,#43a047,#1e88e5,#8e24aa,#e53935);background-size:400% 400%;position:relative;}
 .global-bar.open::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.25) 50%,transparent 65%);transform:translateX(-150%);animation:glimmer 3.2s linear infinite;animation-delay:var(--glimmer-phase,0s);}
 .global-bar.open > .weekday-row,.global-bar.open > .days{background:var(--panel);border-radius:8px;}
+.light .global-bar.open > .weekday-row,.light .global-bar.open > .days{background:var(--panel-light);}
+.global-day{min-height:120px;}
 .global-day .mini-grid{inset:6px;}
 @keyframes rainbow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
 .help{margin:10px auto 18px;max-width:1400px;color:var(--muted);font-size:13px;padding:0 16px}
@@ -105,7 +107,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 <body>
 <header class="app-header">
   <div class="app-title">Term Planner V2</div>
-  
+  <div id="monthRange" class="hint"></div>
 </header>
 
 <!-- Toolbar (Import/Export ideas not implemented yet) -->
@@ -293,11 +295,12 @@ function refreshNotesLegend(){
 }
 function deleteNote(id){const b=notesBoxes.get(id);if(!b)return;b.el.remove();notesBoxes.delete(id);refreshNotesLegend();}
 function revealMonthAt(idx){const key=monthOrder[idx];const sec=monthSections.get(key);sec.style.display='';sec.classList.add('collapsed');const btn=sec.querySelector('.month-toggle');if(btn)btn.textContent='−';requestAnimationFrame(()=>{sec.classList.remove('collapsed');sec.classList.add('expanded');});}
-function showPrevMonth(){if(shownStartIdx>0){shownStartIdx--;revealMonthAt(shownStartIdx);updateMonthButtons();updateMonthClosers();}}
-function showNextMonth(){if(shownEndIdx<monthOrder.length-1){shownEndIdx++;revealMonthAt(shownEndIdx);updateMonthButtons();updateMonthClosers();}}
+function showPrevMonth(){if(shownStartIdx>0){shownStartIdx--;revealMonthAt(shownStartIdx);updateMonthButtons();updateMonthClosers();updateMonthRangeLabel();}}
+function showNextMonth(){if(shownEndIdx<monthOrder.length-1){shownEndIdx++;revealMonthAt(shownEndIdx);updateMonthButtons();updateMonthClosers();updateMonthRangeLabel();}}
 function updateMonthButtons(){if(prevMonthBtn)prevMonthBtn.disabled=(shownStartIdx===0);if(nextMonthBtn)nextMonthBtn.disabled=(shownEndIdx===monthOrder.length-1);}
-function closeMonthAt(idx){if(shownEndIdx===shownStartIdx)return;const key=monthOrder[idx];const sec=monthSections.get(key);if(sec)sec.style.display='none';if(idx===shownStartIdx)shownStartIdx++;if(idx===shownEndIdx)shownEndIdx--;updateMonthButtons();updateMonthClosers();}
-function updateMonthClosers(){monthOrder.forEach((key,idx)=>{const sec=monthSections.get(key);if(!sec)return;const btn=sec.querySelector('.month-close');if(!btn)return;const visible=idx>=shownStartIdx&&idx<=shownEndIdx&&sec.style.display!== 'none';const allow=visible&&(idx===shownStartIdx||idx===shownEndIdx)&&(shownEndIdx>shownStartIdx);btn.style.display=allow?'':'none';});}
+function closeMonthAt(idx){if(shownEndIdx===shownStartIdx)return;const key=monthOrder[idx];const sec=monthSections.get(key);if(sec)sec.style.display='none';if(idx===shownStartIdx)shownStartIdx++;if(idx===shownEndIdx)shownEndIdx--;updateMonthButtons();updateMonthClosers();updateMonthRangeLabel();}
+function updateMonthClosers(){monthOrder.forEach((key,idx)=>{const sec=monthSections.get(key);if(!sec)return;const btn=sec.querySelector('.month-close');if(!btn)return;const visible=idx>=shownStartIdx&&idx<=shownEndIdx&&sec.style.display!=='none';const allow=visible&&(idx===shownStartIdx||idx===shownEndIdx)&&(shownEndIdx>shownStartIdx);btn.style.display=allow?'':'none';});}
+function updateMonthRangeLabel(){const el=document.getElementById('monthRange');if(!el)return;const startKey=monthOrder[shownStartIdx];const endKey=monthOrder[shownEndIdx];if(!startKey||!endKey){el.textContent='';return;}const [sy,sm]=startKey.split('-').map(Number);const [ey,em]=endKey.split('-').map(Number);const s=monthHead(sy,sm);const e=monthHead(ey,em);el.textContent=s===e?s:`${s} – ${e}`;}
 let helpEl=null;function createHelp(){if(helpEl)return helpEl;const box=document.createElement('article');box.className='box helpbox';const head=document.createElement('div');head.className='box-header';const tt=document.createElement('div');tt.className='box-title';tt.textContent='Keyboard & Mouse';const x=document.createElement('button');x.className='box-close';x.innerHTML='&times;';head.appendChild(tt);head.appendChild(x);const body=document.createElement('div');body.className='box-body';body.innerHTML='<div>• Click mini: next color · Shift+Click: prev</div><div>• Hold “t” + click mini: type 1 char</div><div>• Click day background: toggle holiday</div><div>• Click day number: open term box</div><div>• Click left/right edge: toggle barrier</div><div>• Drag term boxes; circle = focus</div><div>• Legend chips: toggle term/note</div><div>• Shift+Click note chip: delete note</div><div>• Esc cascade: focus→clear minis; else close boxes → reset minis → remove barriers</div>';box.appendChild(head);box.appendChild(body);box.style.left='16px';box.style.top='120px';x.addEventListener('click',()=>box.style.display='none');wrap.appendChild(box);helpEl=box;return box;}
 
 // Import/Export panel + codec helpers (stateful)
@@ -365,6 +368,7 @@ prevMonthBtn=document.getElementById('prevMonthBtn');
 nextMonthBtn=document.getElementById('nextMonthBtn');
 updateMonthButtons();
 updateMonthClosers();
+updateMonthRangeLabel();
 // handlers
 const termsLegend=document.getElementById('termsLegend'); if(termsLegend){termsLegend.addEventListener('click',e=>{const chip=e.target.closest('.term-chip'); if(!chip) return; const pos=+chip.dataset.pos; const b=barrierBoxes.get(pos); if(!b) return; if(b.el.style.display==='none'||b.closed){b.el.style.display=''; b.closed=false; positionBox(pos);} else { if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true; }});}
 const addNoteBtn=document.getElementById('addNoteBtn'); if(addNoteBtn){addNoteBtn.addEventListener('click',()=>{const id=noteSeq++; const box=createNoteBox(id); notesBoxes.set(id,box); refreshNotesLegend();});}
