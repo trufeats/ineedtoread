@@ -165,6 +165,7 @@ const monthSections=new Map(),monthOrder=[];
 let shownStartIdx=0,shownEndIdx=0;
 let prevMonthBtn=null,nextMonthBtn=null;
 const GLIMMER_PERIOD=3.2,glimmerBase=performance.now(); let glimmerFlip=false;
+const TERM_BOX_MARGIN=40;
 
 function buildDays(){
   const s=new Date(Date.UTC(BUILD_START.y,BUILD_START.m,1));
@@ -280,7 +281,7 @@ close.addEventListener('click',()=>{const b=barrierBoxes.get(pos);if(b&&b.focusO
 let rs={on:false,x:0,y:0,w:0,h:0};rsH.addEventListener('mousedown',e=>{e.preventDefault();rs.on=true;rs.x=e.clientX;rs.y=e.clientY;const r=box.getBoundingClientRect();rs.w=r.width;rs.h=r.height;document.addEventListener('mousemove',onRM);document.addEventListener('mouseup',onRU,{once:true})});function onRM(e){if(!rs.on)return;box.style.width=Math.max(240,rs.w+e.clientX-rs.x)+'px';box.style.height=Math.max(140,rs.h+e.clientY-rs.y)+'px'}function onRU(){rs.on=false;document.removeEventListener('mousemove',onRM)}wrap.appendChild(box);return{el:box,title:'',isDragged:false,focusOn:false,closed:false}}
 function toggleBarrier(pos){if(barriers.has(pos)){barriers.delete(pos);updateDayBorders(pos);const b=barrierBoxes.get(pos);if(b){if(b.focusOn)clearFocus();b.el.remove();barrierBoxes.delete(pos)}recalcAllBoxes();refreshTermsLegend()}else{barriers.add(pos);updateDayBorders(pos);const box=createBoxForBarrier(pos);barrierBoxes.set(pos,box);recalcAllBoxes();positionBox(pos);refreshTermsLegend()}}
 function recalcAllBoxes(){for(const [pos,b] of barrierBoxes){const {start,end}=segmentFor(pos),body=b.el.querySelector('.box-body');body.innerHTML='';body.appendChild(buildCountsList(countsInRange(start,end)))} }
-function positionBox(pos){const b=barrierBoxes.get(pos);if(!b||b.isDragged)return;const {start,end}=segmentFor(pos),mid=Math.floor((start+end)/2),el=dayEls[mid]||dayEls[end]||dayEls[start];if(!el)return;const wr=wrap.getBoundingClientRect(),r=el.getBoundingClientRect();requestAnimationFrame(()=>{const bb=b.el.getBoundingClientRect();b.el.style.left=Math.max(8,(r.right-wr.left)+16)+'px';b.el.style.top=Math.max(8,(r.top-wr.top)+(r.height/2)-(bb.height/2))+'px'})}
+function positionBox(pos){const b=barrierBoxes.get(pos);if(!b||b.isDragged)return;const day=dayEls[pos-1];if(!day)return;const monthEl=day.closest('.month');if(!monthEl)return;const wr=wrap.getBoundingClientRect(),mr=monthEl.getBoundingClientRect();b.el.style.left=(mr.left-wr.left+8)+'px';b.el.style.top=(mr.bottom-wr.top+TERM_BOX_MARGIN)+'px';}
 function setFocus(pos){clearFocus();const b=barrierBoxes.get(pos);if(!b)return;const {start,end}=segmentFor(pos);for(let i=0;i<days.length;i++){if(i<start||i>end)dayEls[i].classList.add('hiddenOutside')}b.focusOn=true;activeFocusPos=pos;document.querySelectorAll('.focus-toggle').forEach(x=>x.classList.remove('on'));b.el.querySelector('.focus-toggle').classList.add('on')}
 function clearFocus(){for(const el of dayEls)el.classList.remove('hiddenOutside');if(activeFocusPos!=null){const b=barrierBoxes.get(activeFocusPos);if(b){b.focusOn=false;const t=b.el.querySelector('.focus-toggle');if(t)t.classList.remove('on')}}activeFocusPos=null}
 function nextBarrierAfter(idx){const s=[...barriers].sort((a,b)=>a-b);for(const p of s)if(p>idx)return p;return null}
@@ -330,7 +331,7 @@ function importState(str){return new Promise(async(res,rej)=>{try{clearAll();con
 let notesArr=[];if(hdr==='V1Z'&&('DecompressionStream'in window)){const U=ub64(parts[5]);const ds=new DecompressionStream('gzip');const stream=new Blob([U]).stream().pipeThrough(ds);const txt=await new Response(stream).text();notesArr=JSON.parse(txt)}else{notesArr=JSON.parse(atob(parts[5]))}
 for(const n of notesArr){const id=noteSeq++;const box=createNoteBox(id);notesBoxes.set(id,box);box.title=n.t||'';box.el.querySelector('.box-title').textContent=box.title;box.el.querySelector('.note-content').textContent=n.b||'';if(n.c){box.closed=true;box.el.style.display='none'}if(n.x!=null){box.el.style.left=n.x+'px'}if(n.y!=null){box.el.style.top=n.y+'px'}if(n.w!=null){box.el.style.width=n.w+'px'}if(n.h!=null){box.el.style.height=n.h+'px'}}
 if(parts[6]){try{const labs=JSON.parse(parts[6]);for(const k in labs)colorLabels[k]=labs[k]}catch{}}
-refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();syncAllGlimmers();res()}catch(e){rej(e)}})}
+refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res()}catch(e){rej(e)}})}
 
 document.getElementById('notesLegend').addEventListener('click',e=>{
   const chip=e.target.closest('.note-chip');if(!chip)return;
@@ -342,10 +343,12 @@ document.getElementById('notesLegend').addEventListener('click',e=>{
 
 // helper funcs needed by ESC and legends
 function closeAllBoxes(){for(const [,b] of barrierBoxes){if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true;} for(const [,n] of notesBoxes){n.el.style.display='none'; n.closed=true;}}
-function anyMiniColoredOrTyped(){const blank=COLORS.findIndex(c=>c.key==='blank'); for(const d of days){for(let i=0;i<6;i++){if(d.grid[i]!==blank) return true; if(d.letters[i]) return true;}} return false;}
-function resetMinisInRange(a,b){
+function dayInView(i){const el=dayEls[i];return el&&el.offsetParent!==null;}
+function anyMiniColoredOrTyped(onlyVisible=false){const blank=COLORS.findIndex(c=>c.key==='blank'); for(let idx=0;idx<days.length;idx++){if(onlyVisible&&!dayInView(idx))continue;const d=days[idx];for(let i=0;i<6;i++){if(d.grid[i]!==blank) return true; if(d.letters[i]) return true;}} return false;}
+function resetMinisInRange(a,b,onlyVisible=false){
   const blank=COLORS.findIndex(c=>c.key==='blank');
   for(let i=a;i<=b;i++){
+    if(onlyVisible&&!dayInView(i))continue;
     days[i].grid=[blank,blank,blank,blank,blank,blank];
     days[i].letters=["","","","","",""];
     days[i].isHoliday=false;
@@ -358,7 +361,8 @@ function resetMinisInRange(a,b){
   }
   recalcAllBoxes();
 }
-function removeAllBarriers(){clearFocus(); for(const pos of [...barriers]){barriers.delete(pos); updateDayBorders(pos); const bx=barrierBoxes.get(pos); if(bx){bx.el.remove(); barrierBoxes.delete(pos);} } refreshTermsLegend();}
+function removeAllBarriers(onlyVisible=false){clearFocus(); for(const pos of [...barriers]){if(onlyVisible&&!(dayInView(pos-1)||dayInView(pos)))continue;barriers.delete(pos); updateDayBorders(pos); const bx=barrierBoxes.get(pos); if(bx){bx.el.remove(); barrierBoxes.delete(pos);} } refreshTermsLegend();}
+function barriersInView(){for(const pos of barriers){if(dayInView(pos-1)||dayInView(pos))return true;}return false;}
 
 function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;const phase=-(elapsed%GLIMMER_PERIOD);const els=document.querySelectorAll('.day.holiday');els.forEach(el=>{el.style.setProperty('--glimmer-phase',phase+'s');});const gbar=document.getElementById('globalBar');if(gbar&&gbar.classList.contains('open')){gbar.style.setProperty('--glimmer-phase',phase+'s');}const useAlt=glimmerFlip;els.forEach(el=>{el.classList.toggle('sync2',useAlt);});if(gbar&&gbar.classList.contains('open'))gbar.classList.toggle('sync2',useAlt);glimmerFlip=!glimmerFlip;}
 
@@ -385,7 +389,7 @@ const globalToggle=document.getElementById('globalToggle');const globalBar=docum
 function isEditingTarget(el){return el&&(el.isContentEditable||el.tagName==='INPUT'||el.tagName==='TEXTAREA')}
 window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='t'&&!e.repeat&&!isEditingTarget(e.target))tHeld=true});
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='t')tHeld=false});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return; if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); if(anyOpenTerms||anyOpenNotes){closeAllBoxes();return} if(anyMiniColoredOrTyped()){resetMinisInRange(0,days.length-1);return} if(barriers.size>0){removeAllBarriers();return} if(notesBoxes.size===0&&barriers.size===0&&!anyMiniColoredOrTyped()&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return; if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); if(anyOpenTerms||anyOpenNotes){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
 
 // keep boxes positioned
 window.addEventListener('resize',()=>{for(const [pos] of barrierBoxes)positionBox(pos)});
