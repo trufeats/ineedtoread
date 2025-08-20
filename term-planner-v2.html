@@ -111,7 +111,8 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 </div>
 
   <div class="toolbar" style="margin-top:0">
-    <button id="monthsToggle" class="btn" title="Show Aug–Nov 2025">Show more...</button>
+    <button id="prevMonthBtn" class="btn" title="Add previous month">&laquo; Prev</button>
+    <button id="nextMonthBtn" class="btn" title="Add next month">Next &raquo;</button>
     <button id="globalToggle" class="btn" title="Apply to all weekdays">Global</button>
   </div>
   <div id="globalBar" class="global-bar" style="display:none">
@@ -140,31 +141,36 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 
 <script>
 (()=>{
-const YEAR=2026; const PRE_START={y:2025,m:7}; const POST_END={y:2027,m:0}; let showEarly=false;
+const BUILD_START={y:2025,m:0};
+const BUILD_END={y:2035,m:11};
+const INITIAL_KEY='2026-0';
 const COLORS=[{key:'charcoal',name:'Charcoal',css:'charcoal'},{key:'red',name:'Red',css:'red'},{key:'orange',name:'Orange',css:'orange'},{key:'yellow',name:'Yellow',css:'yellow'},{key:'green',name:'Green',css:'green'},{key:'blue',name:'Blue',css:'blue'},{key:'purple',name:'Purple',css:'purple'},{key:'blank',name:'Blank',css:'blank'}];
 const colorLabels=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));
 const blankIndex=COLORS.findIndex(c=>c.key==='blank');
 const globalTemplate=Array.from({length:7},()=>Array(6).fill(blankIndex));
-const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map(); let noteSeq=1,activeFocusPos=null,tHeld=false; const monthsRoot=document.getElementById('months'),wrap=document.getElementById('calendarWrap');const GLIMMER_PERIOD=3.2,glimmerBase=performance.now(); let glimmerFlip=false;
+const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map();
+let noteSeq=1,activeFocusPos=null,tHeld=false;
+const monthsRoot=document.getElementById('months'),wrap=document.getElementById('calendarWrap');
+const monthSections=new Map(),monthOrder=[];
+let shownStartIdx=0,shownEndIdx=0;
+let prevMonthBtn=null,nextMonthBtn=null;
+const GLIMMER_PERIOD=3.2,glimmerBase=performance.now(); let glimmerFlip=false;
 
 function buildDays(){
-  const s=new Date(Date.UTC(PRE_START.y,PRE_START.m,1));
-  const e=new Date(Date.UTC(POST_END.y,POST_END.m,31));
-  for(let d=new Date(s); d<=e; d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()+1))){
+  const s=new Date(Date.UTC(BUILD_START.y,BUILD_START.m,1));
+  const e=new Date(Date.UTC(BUILD_END.y,BUILD_END.m+1,0));
+  for(let d=new Date(s); d<=e; d.setUTCDate(d.getUTCDate()+1)){
     days.push({
       date:new Date(d),
       monthIndex:d.getUTCMonth(),
       year:d.getUTCFullYear(),
       dayOfMonth:d.getUTCDate(),
       weekDay:d.getUTCDay(),
-      grid:[7,7,7,7,7,7],
+      grid:Array(6).fill(blankIndex),
       letters:["","","","","",""],
       isHoliday:false
     });
   }
-}
-function monthName(i){
-  return new Date(Date.UTC(YEAR,i,1)).toLocaleString('en-US',{month:'long'});
 }
 function monthHead(y,m){
   return new Date(Date.UTC(y,m,1)).toLocaleString('en-US',{month:'long'})+' '+y;
@@ -179,11 +185,13 @@ function buildMonthShells(){
     const [y,m]=key.split('-').map(Number);
     const sec=document.createElement('section'); sec.className='month';
     sec.dataset.month=String(m); sec.dataset.year=String(y);
-    const hideEarly=(y===2025 && m<11); sec.style.display = hideEarly ? 'none' : '';
+    sec.style.display='none';
     sec.innerHTML=`<div class="month-head">${monthHead(y,m)}</div>
 <div class="weekday-row"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
 <div class="days" id="month-days-${y}-${m}"></div>`;
     monthsRoot.appendChild(sec);
+    monthSections.set(key,sec);
+    monthOrder.push(key);
     const md=group.get(key), grid=sec.querySelector('.days');
     const fw=md[0].weekDay;
     for(let i=0;i<fw;i++){ const e=document.createElement('div'); e.className='day empty'; grid.appendChild(e); }
@@ -215,6 +223,8 @@ function renderDayCells(){
 }
 function applyGlobal(wd,miniIdx,colorIdx){for(let i=0;i<days.length;i++){const d=days[i];if(d.weekDay===wd&&!d.isHoliday){d.grid[miniIdx]=colorIdx;const el=dayEls[i].querySelectorAll('.mini')[miniIdx];applyMiniColor(el,colorIdx);}}recalcAllBoxes();}
 function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[1,2,3,4,5,6,0];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;const cur=globalTemplate[wd][i];const next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length);globalTemplate[wd][i]=next;applyMiniColor(mini,next);applyGlobal(wd,i,next);});day.querySelectorAll('.mini').forEach((mini,i)=>applyMiniColor(mini,globalTemplate[wd][i]));container.appendChild(day);}}
+function globalTemplateEmpty(){for(const row of globalTemplate){for(const v of row){if(v!==blankIndex)return false;}}return true;}
+function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++)globalTemplate[wd][i]=blankIndex;}document.querySelectorAll('#globalDays .mini').forEach(m=>applyMiniColor(m,blankIndex));}
 function applyMiniColor(el,idx){el.className='mini '+COLORS[idx].css}
 function applyMiniLetter(el,t){const s=el.querySelector('.mini-char');if(s)s.textContent=(t||'').slice(0,1)}
 function startMiniEdit(d,idx,el){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');d.letters[idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,d.letters[idx]);s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
@@ -267,6 +277,9 @@ function refreshNotesLegend(){
   el.innerHTML=list.length?list.map(([id,b])=>`<span class="term-chip note-chip" data-note-id="${id}">${(b.title||'').trim()||('Note '+id)}</span>`).join(' '):'No notes yet';
 }
 function deleteNote(id){const b=notesBoxes.get(id);if(!b)return;b.el.remove();notesBoxes.delete(id);refreshNotesLegend();}
+function showPrevMonth(){if(shownStartIdx>0){shownStartIdx--;const key=monthOrder[shownStartIdx];monthSections.get(key).style.display='';updateMonthButtons();}}
+function showNextMonth(){if(shownEndIdx<monthOrder.length-1){shownEndIdx++;const key=monthOrder[shownEndIdx];monthSections.get(key).style.display='';updateMonthButtons();}}
+function updateMonthButtons(){if(prevMonthBtn)prevMonthBtn.disabled=(shownStartIdx===0);if(nextMonthBtn)nextMonthBtn.disabled=(shownEndIdx===monthOrder.length-1);}
 let helpEl=null;function createHelp(){if(helpEl)return helpEl;const box=document.createElement('article');box.className='box helpbox';const head=document.createElement('div');head.className='box-header';const tt=document.createElement('div');tt.className='box-title';tt.textContent='Keyboard & Mouse';const x=document.createElement('button');x.className='box-close';x.innerHTML='&times;';head.appendChild(tt);head.appendChild(x);const body=document.createElement('div');body.className='box-body';body.innerHTML='<div>• Click mini: next color · Shift+Click: prev</div><div>• Hold “t” + click mini: type 1 char</div><div>• Click day background: toggle holiday</div><div>• Click day number: open term box</div><div>• Click left/right edge: toggle barrier</div><div>• Drag term boxes; circle = focus</div><div>• Legend chips: toggle term/note</div><div>• Shift+Click note chip: delete note</div><div>• Esc cascade: focus→clear minis; else close boxes → reset minis → remove barriers</div>';box.appendChild(head);box.appendChild(body);box.style.left='16px';box.style.top='120px';x.addEventListener('click',()=>box.style.display='none');wrap.appendChild(box);helpEl=box;return box;}
 
 // Import/Export panel + codec helpers (stateful)
@@ -328,22 +341,26 @@ function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;co
 
 // init
 buildDays(); buildMonthShells(); renderDayCells(); buildGlobalWeek(); refreshTermsLegend(); refreshNotesLegend(); syncAllGlimmers();
+shownStartIdx=shownEndIdx=monthOrder.indexOf(INITIAL_KEY);
+monthOrder.forEach((key,idx)=>{monthSections.get(key).style.display=(idx>=shownStartIdx&&idx<=shownEndIdx)?'':'none';});
+prevMonthBtn=document.getElementById('prevMonthBtn');
+nextMonthBtn=document.getElementById('nextMonthBtn');
+updateMonthButtons();
 // handlers
-const termsLegend=document.getElementById('termsLegend'); if(termsLegend){termsLegend.addEventListener('click',e=>{const chip=e.target.closest('.term-chip'); if(!chip) return; const pos=+chip.dataset.pos; const b=barrierBoxes.get(pos); if(!b) return; if(b.el.style.display==='none'||b.closed){b.el.style.display=''; b.closed=false; positionBox(pos);} else { if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true; }});} 
+const termsLegend=document.getElementById('termsLegend'); if(termsLegend){termsLegend.addEventListener('click',e=>{const chip=e.target.closest('.term-chip'); if(!chip) return; const pos=+chip.dataset.pos; const b=barrierBoxes.get(pos); if(!b) return; if(b.el.style.display==='none'||b.closed){b.el.style.display=''; b.closed=false; positionBox(pos);} else { if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true; }});}
 const addNoteBtn=document.getElementById('addNoteBtn'); if(addNoteBtn){addNoteBtn.addEventListener('click',()=>{const id=noteSeq++; const box=createNoteBox(id); notesBoxes.set(id,box); refreshNotesLegend();});}
 const themeToggle=document.getElementById('themeToggle'); if(themeToggle){themeToggle.addEventListener('click',()=>{document.documentElement.classList.toggle('light'); syncAllGlimmers();});}
 const ieToggle=document.getElementById('ieToggle'); if(ieToggle){ieToggle.addEventListener('click',()=>{if(ieEl){ieEl.style.display=(ieEl.style.display==='none')?'':'none';} else createIE();});}
 const termsTxtBtn=document.getElementById('termsTxtBtn'); if(termsTxtBtn){termsTxtBtn.addEventListener('click',()=>{const txt=buildTermsReport();downloadTxt('terms-report.txt',txt)});}
-const monthsToggle=document.getElementById('monthsToggle'); if(monthsToggle){monthsToggle.addEventListener('click',()=>{showEarly=!showEarly;document.querySelectorAll('.month[data-year="2025"]').forEach(sec=>{if(+sec.dataset.month<11){sec.classList.remove(showEarly?'collapse':'expand');sec.classList.add(showEarly?'expand':'collapse');sec.style.display='';}}); monthsToggle.textContent = showEarly ? 'Show less' : 'Show more...';});
+if(prevMonthBtn)prevMonthBtn.addEventListener('click',showPrevMonth);
+if(nextMonthBtn)nextMonthBtn.addEventListener('click',showNextMonth);
 const globalToggle=document.getElementById('globalToggle');const globalBar=document.getElementById('globalBar');if(globalToggle&&globalBar){globalBar.style.display='none';globalToggle.addEventListener('click',()=>{const show=globalBar.style.display==='none';globalBar.style.display=show?'':'none';globalToggle.textContent=show?'Hide global':'Global';});}
-// initialize hidden months collapsed
-requestAnimationFrame(()=>{document.querySelectorAll('.month[data-year="2025"]').forEach(sec=>{if(+sec.dataset.month<11){sec.classList.add('collapse');sec.style.display='none';}});});}
 
 // esc logic + typing helper
 function isEditingTarget(el){return el&&(el.isContentEditable||el.tagName==='INPUT'||el.tagName==='TEXTAREA')}
 window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='t'&&!e.repeat&&!isEditingTarget(e.target))tHeld=true});
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='t')tHeld=false});
-window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end);return}const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed);const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed);if(anyOpenTerms||anyOpenNotes){closeAllBoxes();return}if(anyMiniColoredOrTyped()){resetMinisInRange(0,days.length-1);return}if(barriers.size>0){removeAllBarriers();return}});
+window.addEventListener('keydown',e=>{if(e.key!=='Escape')return; if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); if(anyOpenTerms||anyOpenNotes){closeAllBoxes();return} if(anyMiniColoredOrTyped()){resetMinisInRange(0,days.length-1);return} if(barriers.size>0){removeAllBarriers();return} if(notesBoxes.size===0&&barriers.size===0&&!anyMiniColoredOrTyped()&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
 
 // keep boxes positioned
 window.addEventListener('resize',()=>{for(const [pos] of barrierBoxes)positionBox(pos)});
