@@ -5,6 +5,7 @@ const controls = document.getElementById('controls');
 const checkBtn = document.getElementById('checkBtn');
 const xBtn = document.getElementById('xBtn');
 const timerEl = document.getElementById('timer');
+const timerSection = document.getElementById('timerSection');
 const restartBtn = document.getElementById('restart');
 const wordInput = document.getElementById('wordInput');
 const wordLog = document.getElementById('wordLog');
@@ -25,6 +26,11 @@ const BALL_SPEED = 600; // ms
 const undoStack = [];
 const redoStack = [];
 
+let dragKeyDown = false;
+let draggingHud = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
 setupScreen.querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
     const num = parseInt(btn.dataset.teams);
@@ -38,32 +44,29 @@ function initTeams(num) {
   activeTeams = [];
   gameArea.innerHTML = '';
   const colors = ['red','blue','green','white'];
-  if(num === 2){
-    gameArea.style.gridTemplateColumns = '1fr 1fr';
-    gameArea.style.gridTemplateRows = '1fr';
-  } else if(num === 3){
-    gameArea.style.gridTemplateColumns = '1fr 1fr 1fr';
-    gameArea.style.gridTemplateRows = '1fr';
-  } else {
-    gameArea.style.gridTemplateColumns = '1fr 1fr';
-    gameArea.style.gridTemplateRows = '1fr 1fr';
-  }
   for(let i=0;i<num;i++){
     const el = document.createElement('div');
     el.className = 'team ' + colors[i];
     el.dataset.index = i;
+    if(num === 2){
+      el.style.clipPath = i === 0 ? 'polygon(0 0, 100% 0, 0 100%)' : 'polygon(100% 0, 100% 100%, 0 100%)';
+    } else if(num === 3){
+      el.style.clipPath = ['polygon(0 0, 100% 0, 50% 50%)', 'polygon(0 0, 50% 50%, 0 100%)', 'polygon(100% 0, 100% 100%, 50% 50%)'][i];
+    } else {
+      el.style.clipPath = ['polygon(0 0, 50% 50%, 0 100%)', 'polygon(0 0, 100% 0, 50% 50%)', 'polygon(100% 0, 100% 100%, 50% 50%)', 'polygon(0 100%, 50% 50%, 100% 100%)'][i];
+    }
     const score = document.createElement('div');
     score.className = 'score';
     if(num === 2){
-      score.classList.add(i === 0 ? 'left' : 'right');
+      score.classList.add(i === 0 ? 'top-left' : 'bottom-right');
     } else if(num === 3){
-      score.classList.add(['left','center','right'][i]);
+      score.classList.add(['center','bottom-left','bottom-right'][i]);
     } else {
-      score.classList.add(['top-left','top-right','bottom-left','bottom-right'][i]);
+      score.classList.add(['top-left','top-right','bottom-right','bottom-left'][i]);
     }
     score.textContent = '0';
     el.appendChild(score);
-    el.addEventListener('click', () => teamClicked(i));
+    el.addEventListener('click', (e) => teamClicked(i, e));
     gameArea.appendChild(el);
     teams.push({index:i, score:0, el});
     activeTeams.push(i);
@@ -73,13 +76,16 @@ function initTeams(num) {
   ball.style.top = '50%';
 }
 
-function teamClicked(i){
+function teamClicked(i, e){
   if(!awaitingTeamSelection) return;
   if(activeTeams.indexOf(i) === -1) return;
+  const gameRect = gameArea.getBoundingClientRect();
+  const x = e.clientX - gameRect.left;
+  const y = e.clientY - gameRect.top;
   currentTeam = i;
   awaitingTeamSelection = false;
   controls.classList.remove('hidden');
-  moveBallToTeam(i);
+  moveBall(x, y);
   setTimeout(startTimer, BALL_SPEED);
 }
 
@@ -104,6 +110,7 @@ function endRound(){
   controls.classList.add('hidden');
   awaitingTeamSelection = true;
   currentTeam = null;
+  maybeMutateBall();
 }
 
 function eliminateTeam(i){
@@ -129,22 +136,29 @@ restartBtn.addEventListener('click', () => {
   location.reload();
 });
 
-function moveBallToTeam(i){
-  const teamEl = teams[i].el;
-  const gameRect = gameArea.getBoundingClientRect();
-  const rect = teamEl.getBoundingClientRect();
-  const x = rect.left + rect.width/2 - gameRect.left;
-  const y = rect.top + rect.height/2 - gameRect.top;
+function moveBall(x, y){
   if(ball.style.left && ball.style.top){
     const trail = document.createElement('div');
     trail.className = 'trail';
+    trail.style.width = ball.offsetWidth + 'px';
+    trail.style.height = ball.offsetHeight + 'px';
     trail.style.left = ball.style.left;
     trail.style.top = ball.style.top;
     gameArea.appendChild(trail);
-    setTimeout(() => trail.remove(), BALL_SPEED);
+    setTimeout(() => trail.remove(), 1200);
   }
   ball.style.left = x + 'px';
   ball.style.top = y + 'px';
+}
+
+function maybeMutateBall(){
+  const r = Math.random();
+  ball.classList.remove('angry','meteor');
+  if(r < 0.025){
+    ball.classList.add('meteor');
+  } else if(r < 0.105){
+    ball.classList.add('angry');
+  }
 }
 
 function startTimer(){
@@ -255,6 +269,48 @@ document.addEventListener('keydown', (e) => {
     redo();
   }
 });
+
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'x'){
+    dragKeyDown = true;
+  } else if(e.key === 'z'){
+    resetHud();
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  if(e.key === 'x'){
+    dragKeyDown = false;
+  }
+});
+
+timerEl.addEventListener('mousedown', (e) => {
+  if(dragKeyDown){
+    draggingHud = true;
+    const rect = timerSection.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    e.preventDefault();
+  }
+});
+
+document.addEventListener('mousemove', (e) => {
+  if(draggingHud){
+    timerSection.style.left = (e.clientX - dragOffsetX) + 'px';
+    timerSection.style.top = (e.clientY - dragOffsetY) + 'px';
+    timerSection.style.right = 'auto';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  draggingHud = false;
+});
+
+function resetHud(){
+  timerSection.style.left = '';
+  timerSection.style.top = '10px';
+  timerSection.style.right = '10px';
+}
 
 function undo(){
   const op = undoStack.pop();
