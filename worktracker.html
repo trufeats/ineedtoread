@@ -9,10 +9,19 @@ section {margin-bottom:30px;}
 table {border-collapse: collapse; width:100%;}
 th, td {border:1px solid #ccc; padding:4px;}
 button {margin:2px;}
-.day-card {border:1px solid #666; padding:5px; margin-top:10px;}
+details {border:1px solid #bbb; border-radius:4px; padding:5px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
+@keyframes fadeIn {from{opacity:0;}to{opacity:1;}}
+.day-card {margin-top:10px;}
 .hidden {display:none;}
-.total-line {margin-top:10px; font-weight:bold;}
+.total-line {margin-top:10px; font-weight:bold; background:#f9f9f9; padding:4px;}
+.sum-row {background:#f0f0f0;}
+#task-table th:nth-child(3), #task-table td:nth-child(3),
+#task-table th:nth-child(4), #task-table td:nth-child(4) {width:80px;}
+#task-table th:nth-child(5), #task-table td:nth-child(5) {width:110px;}
 .analytics-table td, .analytics-table th {border:1px solid #ccc; padding:4px;}
+.analytics-table .avg {border-left:2px solid #999;}
+.hide-avg .avg {display:none;}
 </style>
 </head>
 <body>
@@ -20,6 +29,7 @@ button {margin:2px;}
 
 <details id="task-section" open>
 <summary>Task Setup</summary>
+<div id="base-salary-row">$ <input type="number" id="base-salary" style="width:100px;"> per month</div>
 <table id="task-table">
 <thead><tr><th>task</th><th>code</th><th>$</th><th>time</th><th>type</th><th></th></tr></thead>
 <tbody></tbody>
@@ -40,11 +50,18 @@ button {margin:2px;}
 <section id="analytics">
 <h2>Analytics</h2>
 <div id="analytics-info"></div>
+<button id="toggle-avg">Hide Averages</button>
 <table class="analytics-table" id="analytics-table">
-<thead><tr><th>Code</th><th>Task</th><th>Total $</th><th>Total Time</th><th>Daily Avg $</th><th>Weekly Avg $</th><th>Monthly Avg $</th><th>Yearly Avg $</th></tr></thead>
+<thead><tr><th>Code</th><th>Task</th><th>Type</th><th>Total $</th><th>Total Time</th><th class="avg">Daily Avg $</th><th class="avg">Weekly Avg $</th><th class="avg">Monthly Avg $</th><th class="avg">Yearly Avg $</th></tr></thead>
 <tbody></tbody>
 <tfoot></tfoot>
 </table>
+<div id="salary-controls"><label><input type="checkbox" id="use-actual"> Use actual month data</label></div>
+<div id="salary-card" class="day-card">
+  <div>Within Base: $<span id="within-base">0</span></div>
+  <div>Out-of-Base: $<span id="out-base">0</span></div>
+  <div class="sum-row">Salary: $<span id="total-salary">0</span></div>
+</div>
 </section>
 
 <script>
@@ -52,6 +69,10 @@ button {margin:2px;}
 const taskTableBody = document.querySelector('#task-table tbody');
 const addTaskRowBtn = document.getElementById('add-task-row');
 const taskSection = document.getElementById('task-section');
+const toggleAvgBtn = document.getElementById('toggle-avg');
+const analyticsTable = document.getElementById('analytics-table');
+const useActualChk = document.getElementById('use-actual');
+const baseSalaryInput = document.getElementById('base-salary');
 
 function addTaskRow(data={}) {
   const tr = document.createElement('tr');
@@ -59,7 +80,10 @@ function addTaskRow(data={}) {
     <td><input value="${data.code||''}"></td>
     <td><input type="number" value="${data.pay||''}" style="width:70px;"></td>
     <td><input type="number" value="${data.time||''}" style="width:70px;"></td>
-    <td><input value="${data.type||''}"></td>
+    <td><select>
+        <option value="within"${data.type==='within'?' selected':''}>within base</option>
+        <option value="out"${data.type==='out'?' selected':''}>out-of-base</option>
+      </select></td>
     <td><button class="del">x</button></td>`;
   tr.querySelector('.del').addEventListener('click', ()=>tr.remove());
   taskTableBody.appendChild(tr);
@@ -71,12 +95,11 @@ addTaskRowBtn.addEventListener('click', ()=>addTaskRow());
 function collectTasks(){
   const tasks={};
   taskTableBody.querySelectorAll('tr').forEach(row=>{
-    const cells=row.querySelectorAll('input');
-    const task=cells[0].value.trim();
-    const code=cells[1].value.trim();
-    const pay=parseFloat(cells[2].value)||0;
-    const time=parseFloat(cells[3].value)||0;
-    const type=cells[4].value.trim();
+    const task=row.querySelector('td:nth-child(1) input').value.trim();
+    const code=row.querySelector('td:nth-child(2) input').value.trim();
+    const pay=parseFloat(row.querySelector('td:nth-child(3) input').value)||0;
+    const time=parseFloat(row.querySelector('td:nth-child(4) input').value)||0;
+    const type=row.querySelector('td:nth-child(5) select').value;
     if(code) tasks[code]={task, pay, time, type};
   });
   return tasks;
@@ -165,20 +188,21 @@ function createDayCard(date){
     const codeInput=tr.querySelector('.code');
     const amtInput=tr.querySelector('.amt');
 
-    function recalc(){
-      const tasks=collectTasks();
-      const code=codeInput.value.trim();
-      const taskData=tasks[code];
-      const amt=parseFloat(amtInput.value)||0;
-      if(taskData){
-        tr.querySelector('.task').textContent=taskData.task;
-        tr.querySelector('.time').textContent=(taskData.time*amt).toFixed(2);
-        tr.querySelector('.pay').textContent=(taskData.pay*amt).toFixed(2);
-      }else{
-        tr.querySelector('.task').textContent='';
-        tr.querySelector('.time').textContent='0';
-        tr.querySelector('.pay').textContent='0';
-      }
+      function recalc(){
+        const tasks=collectTasks();
+        const code=codeInput.value.trim();
+        const taskData=tasks[code];
+        const amt=parseFloat(amtInput.value)||0;
+        if(taskData){
+          tr.querySelector('.task').textContent=taskData.task;
+          const timeVal=taskData.time*amt;
+          tr.querySelector('.time').textContent=timeVal.toFixed(2);
+          tr.querySelector('.pay').textContent=(taskData.pay*taskData.time*amt).toFixed(2);
+        }else{
+          tr.querySelector('.task').textContent='';
+          tr.querySelector('.time').textContent='0';
+          tr.querySelector('.pay').textContent='0';
+        }
       updateTotals();
     }
     codeInput.addEventListener('change',recalc);
@@ -206,19 +230,19 @@ function createDayCard(date){
 function gatherAllData(){
   const data={}; // code -> {task, pay, time}
   Object.values(dayCards).forEach(card=>{
-    card.element.querySelectorAll('tbody tr').forEach(r=>{
-      const code=r.querySelector('.code').value.trim();
-      const tasks=collectTasks();
-      const def=tasks[code];
-      const amt=parseFloat(r.querySelector('.amt').value)||0;
-      if(code && def){
-        const time=def.time*amt;
-        const pay=def.pay*amt;
-        if(!data[code]) data[code]={task:def.task,time:0,pay:0};
-        data[code].time+=time;
-        data[code].pay+=pay;
-      }
-    });
+  card.element.querySelectorAll('tbody tr').forEach(r=>{
+    const code=r.querySelector('.code').value.trim();
+    const tasks=collectTasks();
+    const def=tasks[code];
+    const amt=parseFloat(r.querySelector('.amt').value)||0;
+    if(code && def){
+      const time=def.time*amt;
+      const pay=def.pay*def.time*amt;
+      if(!data[code]) data[code]={task:def.task,time:0,pay:0,type:def.type};
+      data[code].time+=time;
+      data[code].pay+=pay;
+    }
+  });
   });
   return data;
 }
@@ -232,26 +256,48 @@ function updateAnalytics(){
   const daysCount=Object.keys(dayCards).length;
   document.getElementById('analytics-info').textContent=`Days tracked: ${daysCount}`;
   let totalPay=0,totalTime=0;
+  let withinActual=0,outActual=0,withinMonthly=0,outMonthly=0;
   Object.entries(data).forEach(([code, info])=>{
     totalPay+=info.pay; totalTime+=info.time;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${code}</td><td>${info.task}</td><td>${info.pay.toFixed(2)}</td><td>${info.time.toFixed(2)}</td>`;
+    tr.innerHTML=`<td>${code}</td><td>${info.task}</td><td>${info.type==='within'?'within base':'out-of-base'}</td><td>${info.pay.toFixed(2)}</td><td>${info.time.toFixed(2)}</td>`;
     const daily=(daysCount?info.pay/daysCount:0).toFixed(2);
     const weekly=(daysCount?info.pay/(daysCount/7):0).toFixed(2);
     const monthly=(daysCount?info.pay/(daysCount/30):0).toFixed(2);
     const yearly=(daysCount?info.pay/(daysCount/365):0).toFixed(2);
-    tr.innerHTML+=`<td>${daily}</td><td>${weekly}</td><td>${monthly}</td><td>${yearly}</td>`;
+    tr.innerHTML+=`<td class="avg">${daily}</td><td class="avg">${weekly}</td><td class="avg">${monthly}</td><td class="avg">${yearly}</td>`;
     tbody.appendChild(tr);
+    if(info.type==='within'){withinActual+=info.pay; withinMonthly+=parseFloat(monthly);} else if(info.type==='out'){outActual+=info.pay; outMonthly+=parseFloat(monthly);}
   });
   const tr=document.createElement('tr');
-  tr.innerHTML=`<td>ALL</td><td>-</td><td>${totalPay.toFixed(2)}</td><td>${totalTime.toFixed(2)}</td>`;
+  tr.className='sum-row';
+  tr.innerHTML=`<td>ALL</td><td>-</td><td>-</td><td>${totalPay.toFixed(2)}</td><td>${totalTime.toFixed(2)}</td>`;
   const daily=(daysCount?totalPay/daysCount:0).toFixed(2);
   const weekly=(daysCount?totalPay/(daysCount/7):0).toFixed(2);
   const monthly=(daysCount?totalPay/(daysCount/30):0).toFixed(2);
   const yearly=(daysCount?totalPay/(daysCount/365):0).toFixed(2);
-  tr.innerHTML+=`<td>${daily}</td><td>${weekly}</td><td>${monthly}</td><td>${yearly}</td>`;
+  tr.innerHTML+=`<td class="avg">${daily}</td><td class="avg">${weekly}</td><td class="avg">${monthly}</td><td class="avg">${yearly}</td>`;
   tfoot.appendChild(tr);
+  updateSalary(withinActual,outActual,withinMonthly,outMonthly);
 }
+
+function updateSalary(withinActual,outActual,withinMonthly,outMonthly){
+  const base=parseFloat(document.getElementById('base-salary').value)||0;
+  const useActual=document.getElementById('use-actual').checked;
+  const within=useActual?withinActual:withinMonthly;
+  const out=useActual?outActual:outMonthly;
+  document.getElementById('within-base').textContent=within.toFixed(2);
+  document.getElementById('out-base').textContent=out.toFixed(2);
+  const salary=Math.max(base,within)+out;
+  document.getElementById('total-salary').textContent=salary.toFixed(2);
+}
+
+toggleAvgBtn.addEventListener('click',()=>{
+  analyticsTable.classList.toggle('hide-avg');
+  toggleAvgBtn.textContent=analyticsTable.classList.contains('hide-avg')?'Show Averages':'Hide Averages';
+});
+useActualChk.addEventListener('change',updateAnalytics);
+baseSalaryInput.addEventListener('input',updateAnalytics);
 
 })();
 </script>
