@@ -10,6 +10,13 @@ const restartBtn = document.getElementById('restart');
 const wordInput = document.getElementById('wordInput');
 const wordLog = document.getElementById('wordLog');
 const toggleLog = document.getElementById('toggleLog');
+const quickOverlay = document.getElementById('quickOverlay');
+const quickInput = document.getElementById('quickInput');
+const searchOverlay = document.getElementById('searchOverlay');
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+const searchClose = document.getElementById('searchClose');
+const screenOverlay = document.getElementById('screenOverlay');
 
 let teams = [];
 let activeTeams = [];
@@ -153,15 +160,26 @@ function moveBall(x, y){
 
 function maybeMutateBall(){
   const r = Math.random();
-  ball.classList.remove('angry','meteor');
+  ball.classList.remove('black','meteor');
   if(r < 0.025){
     ball.classList.add('meteor');
+    flashScreen('burgundy');
   } else if(r < 0.105){
-    ball.classList.add('angry');
+    ball.classList.add('black');
+    flashScreen('charcoal');
   }
 }
 
+function flashScreen(type){
+  screenOverlay.className = type;
+  screenOverlay.style.opacity = '1';
+  setTimeout(() => {
+    screenOverlay.style.opacity = '0';
+  }, 800);
+}
+
 function startTimer(){
+  stopTimer();
   remainingTime = timerDuration;
   updateTimer();
   timerInterval = setInterval(tick, 1000);
@@ -263,6 +281,7 @@ function removeWord(span){
 }
 
 document.addEventListener('keydown', (e) => {
+  if(e.target.tagName === 'INPUT') return;
   if(e.key === ','){
     undo();
   } else if(e.key === '.'){
@@ -271,10 +290,22 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if(e.target.tagName === 'INPUT') return;
   if(e.key === 'x'){
     dragKeyDown = true;
   } else if(e.key === 'z'){
     resetHud();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if(e.target.tagName === 'INPUT') return;
+  if(e.key === ' '){
+    e.preventDefault();
+    if(quickOverlay.classList.contains('hidden')) openQuick();
+  } else if(e.key === 's'){
+    e.preventDefault();
+    if(searchOverlay.classList.contains('hidden')) openSearch();
   }
 });
 
@@ -343,3 +374,51 @@ function redo(){
   }
   undoStack.push(op);
 }
+
+function openQuick(){
+  quickOverlay.classList.remove('hidden');
+  quickInput.value = '';
+  quickInput.focus();
+}
+
+function closeQuick(){
+  quickOverlay.classList.add('hidden');
+}
+
+quickInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){
+    const val = quickInput.value.trim();
+    if(val){
+      addWord(val);
+    }
+    closeQuick();
+  } else if(e.key === 'Escape'){
+    closeQuick();
+  }
+});
+
+function openSearch(){
+  searchOverlay.classList.remove('hidden');
+  searchInput.value = '';
+  searchResults.innerHTML = '';
+  searchInput.focus();
+}
+
+function closeSearch(){
+  searchOverlay.classList.add('hidden');
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase();
+  const words = Array.from(wordLog.children)
+    .map(el => el.textContent)
+    .filter(w => w.toLowerCase().startsWith(q))
+    .sort();
+  searchResults.innerHTML = words.map(w => `<div>${w}</div>`).join('');
+});
+
+searchOverlay.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') closeSearch();
+});
+
+searchClose.addEventListener('click', closeSearch);
