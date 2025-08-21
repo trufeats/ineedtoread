@@ -83,6 +83,7 @@ const exportBtn = document.getElementById('export-btn');
 let undoStack=[], redoStack=[], lastStateStr='';
 let copyModeSource=null;
 let dragSrcRow=null;
+let dayCards={};
 
 function handleDragStart(){dragSrcRow=this;}
 function handleDragOver(e){e.preventDefault();}
@@ -147,7 +148,6 @@ for(let i=curYear-1;i<=curYear+1;i++){const opt=document.createElement('option')
 const datePicker=document.getElementById('date-picker');
 const dayCardsContainer=document.getElementById('day-cards');
 const addDayBtn=document.getElementById('add-day');
-let dayCards={};
 
 function formatDate(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 
