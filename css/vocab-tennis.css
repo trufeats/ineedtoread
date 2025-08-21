@@ -1,8 +1,8 @@
 html, body {
   height: 100%;
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(circle at center, #222, #000 80%);
   color: #fff;
 }
 
@@ -20,41 +20,73 @@ html, body {
 .setup-buttons button {
   font-size: 2em;
   margin: 0.5em;
+  padding: 0.2em 0.6em;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  align-items: flex-start;
+.setup-buttons button:hover {
+  transform: scale(1.05);
 }
 
 #topic {
-  font-size: 2em;
+  font-size: 2.5em;
   cursor: text;
+  text-align: center;
+  flex: 1;
+}
+
+header {
+  position: relative;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 #timerSection {
+  position: absolute;
+  right: 10px;
+  top: 10px;
   text-align: right;
 }
 
 #timer {
-  width: 60px;
-  height: 60px;
-  border: 5px solid #fff;
+  width: 100px;
+  height: 100px;
+  border: 8px solid #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5em;
+  font-size: 2.5em;
   cursor: pointer;
   margin-left: auto;
+  transition: transform 0.3s;
+}
+
+#timer:active {
+  transform: scale(0.95);
 }
 
 #timeControls {
   margin-top: 5px;
   display: flex;
   gap: 5px;
+}
+
+#timeControls button {
+  border: none;
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#timeControls button:hover {
+  background: rgba(255,255,255,0.2);
 }
 
 #wordInputContainer {
@@ -80,6 +112,7 @@ header {
   flex-wrap: wrap;
   gap: 5px;
   font-size: 0.8em;
+  transition: max-height 0.3s;
 }
 
 #wordLog.minimized {
@@ -91,21 +124,28 @@ header {
 }
 
 #gameArea {
+  position: relative;
   display: grid;
-  gap: 5px;
-  background: #36454F;
+  gap: 10px;
+  background: #222;
   height: calc(100vh - 260px);
 }
 
 #eliminatedArea {
   display: none;
   height: 80px;
-  gap: 5px;
-  background: #36454F;
+  gap: 10px;
+  background: #222;
 }
 
 #eliminatedArea.show {
   display: flex;
+}
+
+@keyframes shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .team {
@@ -115,12 +155,14 @@ header {
   justify-content: center;
   font-size: 3em;
   color: #fff;
+  background-size: 400% 400%;
+  animation: shift 8s ease infinite;
+  transition: opacity 0.3s;
 }
-
-.team.red { background: #d00; }
-.team.blue { background: #00f; }
-.team.green { background: #0a0; }
-.team.white { background: #eee; color: #000; }
+.team.red { background-image: linear-gradient(-45deg, #ff4d4d, #990000, #ff0000); }
+.team.blue { background-image: linear-gradient(-45deg, #4d4dff, #000099, #0000ff); }
+.team.green { background-image: linear-gradient(-45deg, #4dff4d, #006600, #00cc00); }
+.team.white { background-image: linear-gradient(-45deg, #ffffff, #cccccc, #eeeeee); color: #000; }
 
 #controls {
   position: fixed;
@@ -140,6 +182,24 @@ header {
   width: 100px;
   height: 100px;
   font-size: 3em;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+#controls button:hover {
+  transform: scale(1.1);
+}
+
+#checkBtn {
+  background: #2ecc71;
+  color: #000;
+}
+
+#xBtn {
+  background: #e74c3c;
+  color: #000;
 }
 
 #restart {
@@ -157,13 +217,45 @@ header {
 }
 
 #ball {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: yellow;
-  box-shadow: 0 0 10px yellow;
+  background: radial-gradient(circle, #ffff66, #ffaa00);
+  box-shadow: 0 0 20px 5px rgba(255,255,0,0.8);
   position: absolute;
-  top: 50%;
-  left: 50%;
   transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 200;
+  transition: left 0.6s ease, top 0.6s ease;
 }
+
+.trail {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffff66, #ffaa00);
+  box-shadow: 0 0 20px 5px rgba(255,255,0,0.6);
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: trailFade 0.6s forwards;
+  z-index: 100;
+}
+
+@keyframes trailFade {
+  from { opacity: 0.6; }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+}
+
+.score {
+  position: absolute;
+  font-size: 2em;
+}
+
+.score.left { top: 10px; left: 10px; }
+.score.right { top: 10px; right: 10px; }
+.score.center { top: 10px; left: 50%; transform: translateX(-50%); }
+.score.top-left { top: 10px; left: 10px; }
+.score.top-right { top: 10px; right: 10px; }
+.score.bottom-left { bottom: 10px; left: 10px; }
+.score.bottom-right { bottom: 10px; right: 10px; }

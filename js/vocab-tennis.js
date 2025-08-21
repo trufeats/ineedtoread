@@ -20,6 +20,7 @@ let timerInterval = null;
 let paused = true;
 const ball = document.createElement('div');
 ball.id = 'ball';
+const BALL_SPEED = 600; // ms
 
 const undoStack = [];
 const redoStack = [];
@@ -53,6 +54,13 @@ function initTeams(num) {
     el.dataset.index = i;
     const score = document.createElement('div');
     score.className = 'score';
+    if(num === 2){
+      score.classList.add(i === 0 ? 'left' : 'right');
+    } else if(num === 3){
+      score.classList.add(['left','center','right'][i]);
+    } else {
+      score.classList.add(['top-left','top-right','bottom-left','bottom-right'][i]);
+    }
     score.textContent = '0';
     el.appendChild(score);
     el.addEventListener('click', () => teamClicked(i));
@@ -60,16 +68,19 @@ function initTeams(num) {
     teams.push({index:i, score:0, el});
     activeTeams.push(i);
   }
+  gameArea.appendChild(ball);
+  ball.style.left = '50%';
+  ball.style.top = '50%';
 }
 
 function teamClicked(i){
   if(!awaitingTeamSelection) return;
   if(activeTeams.indexOf(i) === -1) return;
   currentTeam = i;
-  teams[i].el.appendChild(ball);
   awaitingTeamSelection = false;
   controls.classList.remove('hidden');
-  startTimer();
+  moveBallToTeam(i);
+  setTimeout(startTimer, BALL_SPEED);
 }
 
 checkBtn.addEventListener('click', () => {
@@ -90,7 +101,6 @@ xBtn.addEventListener('click', () => {
 
 function endRound(){
   stopTimer();
-  if(ball.parentNode) ball.parentNode.removeChild(ball);
   controls.classList.add('hidden');
   awaitingTeamSelection = true;
   currentTeam = null;
@@ -118,6 +128,24 @@ function endGame(){
 restartBtn.addEventListener('click', () => {
   location.reload();
 });
+
+function moveBallToTeam(i){
+  const teamEl = teams[i].el;
+  const gameRect = gameArea.getBoundingClientRect();
+  const rect = teamEl.getBoundingClientRect();
+  const x = rect.left + rect.width/2 - gameRect.left;
+  const y = rect.top + rect.height/2 - gameRect.top;
+  if(ball.style.left && ball.style.top){
+    const trail = document.createElement('div');
+    trail.className = 'trail';
+    trail.style.left = ball.style.left;
+    trail.style.top = ball.style.top;
+    gameArea.appendChild(trail);
+    setTimeout(() => trail.remove(), BALL_SPEED);
+  }
+  ball.style.left = x + 'px';
+  ball.style.top = y + 'px';
+}
 
 function startTimer(){
   remainingTime = timerDuration;
