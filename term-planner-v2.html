@@ -40,6 +40,8 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .month.expanded .days{transition:max-height .35s ease,opacity .25s ease;max-height:1200px;opacity:1}
 .month.expanded{overflow:hidden}
 .month{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.month.locked{background:#4285f4!important;}
+.month.locked .month-head{background:#4285f4;}
 .month-head{padding:10px 12px;font-weight:700;background:var(--panel-2);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between}
 .month-controls{display:flex;align-items:center;gap:4px}
 .month-toggle{background:transparent;border:none;color:inherit;cursor:pointer;font-size:16px}
@@ -160,12 +162,16 @@ const blankIndex=COLORS.findIndex(c=>c.key==='blank');
 const globalTemplate=Array.from({length:7},()=>Array(6).fill(blankIndex));
 const globalLetters=Array.from({length:7},()=>Array(6).fill(""));
 const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map();
-let noteSeq=1,activeFocusPos=null,tHeld=false;
+let noteSeq=1,activeFocusPos=null,tHeld=false,lHeld=false;
 const monthsRoot=document.getElementById('months'),wrap=document.getElementById('calendarWrap');
-const monthSections=new Map(),monthOrder=[];
+const monthSections=new Map(),monthOrder=[],lockedMonths=new Set();
 let shownStartIdx=0,shownEndIdx=0;
 let prevMonthBtn=null,nextMonthBtn=null;
 const GLIMMER_PERIOD=3.2,glimmerBase=performance.now(); let glimmerFlip=false;
+
+function monthKey(y,m){return y+'-'+m;}
+function isMonthLocked(y,m){return lockedMonths.has(monthKey(y,m));}
+function toggleMonthLock(y,m){const key=monthKey(y,m);const sec=monthSections.get(key);if(!sec)return;if(lockedMonths.has(key)){lockedMonths.delete(key);sec.classList.remove('locked');}else{lockedMonths.add(key);sec.classList.add('locked');}}
 
 function buildDays(){
   const s=new Date(Date.UTC(BUILD_START.y,BUILD_START.m,1));
@@ -206,6 +212,7 @@ function buildMonthShells(){
     closeBtn.addEventListener('click',()=>{const idx=monthOrder.indexOf(key);closeMonthAt(idx);});
     const head=sec.querySelector('.month-head');
     head.addEventListener('click',e=>{if(!e.shiftKey||e.target.closest('.month-controls'))return;const idx=monthOrder.indexOf(key);if((idx===shownStartIdx||idx===shownEndIdx)&&shownEndIdx>shownStartIdx)closeMonthAt(idx);});
+    sec.addEventListener('click',e=>{if(lHeld){toggleMonthLock(y,m);e.stopPropagation();e.preventDefault();}},true);
     monthsRoot.appendChild(sec);
     monthSections.set(key,sec);
     monthOrder.push(key);
@@ -228,10 +235,10 @@ function renderDayCells(){
 <div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class=\"mini blank\" data-mini=\"${i}\"><span class=\"mini-char\"></span></div>`).join('')}</div>
 <div class="barrier-handle left" data-edge="left" title="Toggle barrier (left)"></div>
 <div class="barrier-handle right" data-edge="right" title="Toggle barrier (right)"></div>`;
-      day.querySelector('.mini-grid').addEventListener('click',ev=>{ const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; if(tHeld){ startMiniEdit(d,i,mini); return } const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); recalcAllBoxes(); });
-      day.querySelectorAll('.barrier-handle').forEach(h=>h.addEventListener('click',ev=>{ ev.stopPropagation(); const edge=h.dataset.edge, idx=+day.dataset.index, pos=(edge==='left')?idx:(idx+1); toggleBarrier(pos);}));
-      day.querySelector('.day-number').addEventListener('click',()=>openBoxForDay(+day.dataset.index));
-      day.addEventListener('click',ev=>{ if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; toggleHoliday(+day.dataset.index); });
+      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; if(tHeld){ startMiniEdit(d,i,mini); return } const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); recalcAllBoxes(); });
+      day.querySelectorAll('.barrier-handle').forEach(h=>h.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; ev.stopPropagation(); const edge=h.dataset.edge, idx=+day.dataset.index, pos=(edge==='left')?idx:(idx+1); toggleBarrier(pos);}));
+      day.querySelector('.day-number').addEventListener('click',()=>{ if(isMonthLocked(d.year,d.monthIndex)) return; openBoxForDay(+day.dataset.index);});
+      day.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; toggleHoliday(+day.dataset.index); });
       day.querySelectorAll('.mini').forEach((mini,i)=>{ applyMiniColor(mini,d.grid[i]); applyMiniLetter(mini,d.letters[i]); });
       grid.appendChild(day); dayEls.push(day); gi++;
     }
@@ -239,8 +246,8 @@ function renderDayCells(){
   }
 }
 function dayIsVisible(i){const d=days[i];const key=d.year+'-'+d.monthIndex;const sec=monthSections.get(key);return sec&&sec.style.display!=='none'&&!sec.classList.contains('collapsed');}
-function applyGlobalColor(wd,miniIdx,colorIdx){for(let i=0;i<days.length;i++){const d=days[i];if(d.weekDay===wd&&!d.isHoliday&&dayIsVisible(i)){d.grid[miniIdx]=colorIdx;const el=dayEls[i].querySelectorAll('.mini')[miniIdx];applyMiniColor(el,colorIdx);}}recalcAllBoxes();}
-function applyGlobalLetter(wd,miniIdx,letter){for(let i=0;i<days.length;i++){const d=days[i];if(d.weekDay===wd&&!d.isHoliday&&dayIsVisible(i)){d.letters[miniIdx]=letter;const el=dayEls[i].querySelectorAll('.mini')[miniIdx];applyMiniLetter(el,letter);}}}
+function applyGlobalColor(wd,miniIdx,colorIdx){for(let i=0;i<days.length;i++){const d=days[i];if(d.weekDay===wd&&!d.isHoliday&&dayIsVisible(i)&&!isMonthLocked(d.year,d.monthIndex)){d.grid[miniIdx]=colorIdx;const el=dayEls[i].querySelectorAll('.mini')[miniIdx];applyMiniColor(el,colorIdx);}}recalcAllBoxes();}
+function applyGlobalLetter(wd,miniIdx,letter){for(let i=0;i<days.length;i++){const d=days[i];if(d.weekDay===wd&&!d.isHoliday&&dayIsVisible(i)&&!isMonthLocked(d.year,d.monthIndex)){d.letters[miniIdx]=letter;const el=dayEls[i].querySelectorAll('.mini')[miniIdx];applyMiniLetter(el,letter);}}}
 function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}const cur=globalTemplate[wd][i];const next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length);globalTemplate[wd][i]=next;applyMiniColor(mini,next);applyGlobalColor(wd,i,next);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);});container.appendChild(day);}}
 function globalTemplateEmpty(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){if(globalTemplate[wd][i]!==blankIndex)return false;if(globalLetters[wd][i])return false;}}return true;}
 function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){globalTemplate[wd][i]=blankIndex;globalLetters[wd][i]='';}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyMiniColor(m,blankIndex);applyMiniLetter(m,'');});}
@@ -281,7 +288,7 @@ title.addEventListener('input',()=>{const b=barrierBoxes.get(pos);if(b)b.title=t
 close.addEventListener('click',()=>{const b=barrierBoxes.get(pos);if(b&&b.focusOn)clearFocus();box.style.display='none';if(b)b.closed=true});
 // resize
 let rs={on:false,x:0,y:0,w:0,h:0};rsH.addEventListener('mousedown',e=>{e.preventDefault();rs.on=true;rs.x=e.clientX;rs.y=e.clientY;const r=box.getBoundingClientRect();rs.w=r.width;rs.h=r.height;document.addEventListener('mousemove',onRM);document.addEventListener('mouseup',onRU,{once:true})});function onRM(e){if(!rs.on)return;box.style.width=Math.max(240,rs.w+e.clientX-rs.x)+'px';box.style.height=Math.max(140,rs.h+e.clientY-rs.y)+'px'}function onRU(){rs.on=false;document.removeEventListener('mousemove',onRM)}wrap.appendChild(box);return{el:box,title:'',isDragged:false,focusOn:false,closed:false}}
-function toggleBarrier(pos){if(barriers.has(pos)){barriers.delete(pos);updateDayBorders(pos);const b=barrierBoxes.get(pos);if(b){if(b.focusOn)clearFocus();b.el.remove();barrierBoxes.delete(pos)}recalcAllBoxes();refreshTermsLegend()}else{barriers.add(pos);updateDayBorders(pos);const box=createBoxForBarrier(pos);barrierBoxes.set(pos,box);recalcAllBoxes();positionBox(pos);refreshTermsLegend()}}
+function toggleBarrier(pos){const left=days[pos-1],right=days[pos];if((left&&isMonthLocked(left.year,left.monthIndex))||(right&&isMonthLocked(right.year,right.monthIndex)))return;if(barriers.has(pos)){barriers.delete(pos);updateDayBorders(pos);const b=barrierBoxes.get(pos);if(b){if(b.focusOn)clearFocus();b.el.remove();barrierBoxes.delete(pos)}recalcAllBoxes();refreshTermsLegend()}else{barriers.add(pos);updateDayBorders(pos);const box=createBoxForBarrier(pos);barrierBoxes.set(pos,box);recalcAllBoxes();positionBox(pos);refreshTermsLegend()}}
 function recalcAllBoxes(){for(const [pos,b] of barrierBoxes){const {start,end}=segmentFor(pos),body=b.el.querySelector('.box-body');body.innerHTML='';body.appendChild(buildCountsList(countsInRange(start,end)))} }
 function positionBox(pos){const b=barrierBoxes.get(pos);if(!b||b.isDragged)return;const day=dayEls[pos-1];if(!day)return;const monthEl=day.closest('.month');if(!monthEl)return;const wr=wrap.getBoundingClientRect(),mr=monthEl.getBoundingClientRect();requestAnimationFrame(()=>{const bb=b.el.getBoundingClientRect();b.el.style.left=(mr.left-wr.left+(mr.width-bb.width)/2)+'px';b.el.style.top=(mr.top-wr.top+(mr.height-bb.height)/2)+'px';});}
 function setFocus(pos){clearFocus();const b=barrierBoxes.get(pos);if(!b)return;const {start,end}=segmentFor(pos);for(let i=0;i<days.length;i++){if(i<start||i>end)dayEls[i].classList.add('hiddenOutside')}b.focusOn=true;activeFocusPos=pos;document.querySelectorAll('.focus-toggle').forEach(x=>x.classList.remove('on'));b.el.querySelector('.focus-toggle').classList.add('on')}
@@ -327,12 +334,13 @@ function applyDayVisual(i){const d=days[i],el=dayEls[i];if(!el)return;el.classLi
 function unpackDays(U){let i=0;let [start,i2]=vd(U,0);let [len,i3]=vd(U,i2);i=i3;const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date),j);let byteIdx=i,bit=0,cur=U[byteIdx]||0;const gb=()=>{const v=(cur>>bit)&1;bit++;if(bit===8){bit=0;byteIdx++;cur=U[byteIdx]||0}return v};for(let k=0;k<len;k++){const ep=start+k,di=map.get(ep);const hol=gb()?1:0;let arr=[0,0,0,0,0,0];for(let m=0;m<6;m++){let v=gb()|(gb()<<1)|(gb()<<2);arr[m]=v}if(di!=null){days[di].isHoliday=hol?true:false;days[di].grid=arr;applyDayVisual(di)}}}
 function packLetters(){const out=[];for(let i=0;i<days.length;i++){const L=days[i].letters;if(L.some(x=>x&&x.length)){out.push(...ve(i));for(let k=0;k<6;k++){const c=L[k]?L[k].charCodeAt(0)&255:0;out.push(c)}}}return new Uint8Array(out)}
 function unpackLetters(U,start){let i=0;const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date)-start,j);while(i<U.length){let off;[off,i]=vd(U,i);const di=map.get(off);for(let k=0;k<6;k++){const c=U[i++];if(di!=null){days[di].letters[k]=c?String.fromCharCode(c):'';const mini=dayEls[di].querySelectorAll('.mini')[k];applyMiniLetter(mini,days[di].letters[k])}}}}
-function exportState(){return new Promise(async(res,rej)=>{try{const daysB=packDays();const lettersB=packLetters();const start=epochDays(days[0].date);const barr=[...barriers].sort((a,b)=>a-b).map(p=>p-1);const terms=[...barrierBoxes.entries()].map(([pos,b])=>({o:pos-1,t:b.title||'',c:!!b.closed}));const notes=[...notesBoxes.entries()].map(([id,b])=>{const r=b.el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();return{t:b.title||'',b:b.el.querySelector('.note-content').textContent||'',x:Math.round(r.left-wr.left),y:Math.round(r.top-wr.top),w:Math.round(r.width),h:Math.round(r.height),c:!!b.closed}});const def=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));const lab={};for(const k in colorLabels){if(colorLabels[k]!==def[k])lab[k]=colorLabels[k]}const b64days=b64(daysB),b64letters=b64(lettersB),b64bars=btoa(JSON.stringify(barr)),b64terms=btoa(JSON.stringify(terms));let hdr='V1',b64notes;try{if('CompressionStream'in window&&notes.length){const json=JSON.stringify(notes);const cs=new CompressionStream('gzip');const stream=new Blob([json]).stream().pipeThrough(cs);const buf=await new Response(stream).arrayBuffer();b64notes=b64(new Uint8Array(buf));hdr='V1Z'}else{b64notes=btoa(JSON.stringify(notes))}}catch{b64notes=btoa(JSON.stringify(notes))}const out=[hdr,b64days,b64letters,b64bars,b64terms,b64notes,JSON.stringify(lab)].join('|');res(out)}catch(e){rej(e)}})}
-function clearAll(){closeAllBoxes();removeAllBarriers();resetMinisInRange(0,days.length-1);for(const [,n] of notesBoxes){n.el.remove()}notesBoxes.clear();}
+function exportState(){return new Promise(async(res,rej)=>{try{const daysB=packDays();const lettersB=packLetters();const start=epochDays(days[0].date);const barr=[...barriers].sort((a,b)=>a-b).map(p=>p-1);const terms=[...barrierBoxes.entries()].map(([pos,b])=>({o:pos-1,t:b.title||'',c:!!b.closed}));const notes=[...notesBoxes.entries()].map(([id,b])=>{const r=b.el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();return{t:b.title||'',b:b.el.querySelector('.note-content').textContent||'',x:Math.round(r.left-wr.left),y:Math.round(r.top-wr.top),w:Math.round(r.width),h:Math.round(r.height),c:!!b.closed}});const def=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));const lab={};for(const k in colorLabels){if(colorLabels[k]!==def[k])lab[k]=colorLabels[k]}const b64days=b64(daysB),b64letters=b64(lettersB),b64bars=btoa(JSON.stringify(barr)),b64terms=btoa(JSON.stringify(terms));let hdr='V1',b64notes;try{if('CompressionStream'in window&&notes.length){const json=JSON.stringify(notes);const cs=new CompressionStream('gzip');const stream=new Blob([json]).stream().pipeThrough(cs);const buf=await new Response(stream).arrayBuffer();b64notes=b64(new Uint8Array(buf));hdr='V1Z'}else{b64notes=btoa(JSON.stringify(notes))}}catch{b64notes=btoa(JSON.stringify(notes))}const out=[hdr,b64days,b64letters,b64bars,b64terms,b64notes,JSON.stringify(lab),JSON.stringify([...lockedMonths])].join('|');res(out)}catch(e){rej(e)}})}
+function clearAll(){closeAllBoxes();removeAllBarriers();resetMinisInRange(0,days.length-1);for(const [,n] of notesBoxes){n.el.remove()}notesBoxes.clear();lockedMonths.clear();monthSections.forEach(sec=>sec.classList.remove('locked'));}
 function importState(str){return new Promise(async(res,rej)=>{try{clearAll();const parts=str.split('|');if(parts.length<6)throw 'Bad code';const hdr=parts[0],Udays=ub64(parts[1]);unpackDays(Udays);const [start]=vd(Udays,0);const Ulet=ub64(parts[2]);unpackLetters(Ulet,start);const bars=JSON.parse(atob(parts[3]));for(const off of bars){const ep=start+off;const idx=days.findIndex(d=>epochDays(d.date)===ep);if(idx>=0){const pos=idx+1;if(!barriers.has(pos))toggleBarrier(pos)}}const terms=JSON.parse(atob(parts[4]));for(const t of terms){const idx=days.findIndex(d=>epochDays(d.date)===(start+(t.o||0)));if(idx>=0){const pos=idx+1;const b=barrierBoxes.get(pos);if(b){b.title=t.t||'';b.closed=!!t.c;b.el.querySelector('.box-title').textContent=b.title;if(b.closed)b.el.style.display='none';else b.el.style.display='';}}}
 let notesArr=[];if(hdr==='V1Z'&&('DecompressionStream'in window)){const U=ub64(parts[5]);const ds=new DecompressionStream('gzip');const stream=new Blob([U]).stream().pipeThrough(ds);const txt=await new Response(stream).text();notesArr=JSON.parse(txt)}else{notesArr=JSON.parse(atob(parts[5]))}
 for(const n of notesArr){const id=noteSeq++;const box=createNoteBox(id);notesBoxes.set(id,box);box.title=n.t||'';box.el.querySelector('.box-title').textContent=box.title;box.el.querySelector('.note-content').textContent=n.b||'';if(n.c){box.closed=true;box.el.style.display='none'}if(n.x!=null){box.el.style.left=n.x+'px'}if(n.y!=null){box.el.style.top=n.y+'px'}if(n.w!=null){box.el.style.width=n.w+'px'}if(n.h!=null){box.el.style.height=n.h+'px'}}
 if(parts[6]){try{const labs=JSON.parse(parts[6]);for(const k in labs)colorLabels[k]=labs[k]}catch{}}
+if(parts[7]){try{const locked=JSON.parse(parts[7]);for(const key of locked){lockedMonths.add(key);const sec=monthSections.get(key);if(sec)sec.classList.add('locked');}}catch{}}
 refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res()}catch(e){rej(e)}})}
 
 document.getElementById('notesLegend').addEventListener('click',e=>{
@@ -346,14 +354,16 @@ document.getElementById('notesLegend').addEventListener('click',e=>{
 // helper funcs needed by ESC and legends
 function closeAllBoxes(){for(const [,b] of barrierBoxes){if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true;} for(const [,n] of notesBoxes){n.el.style.display='none'; n.closed=true;}}
 function dayInView(i){const el=dayEls[i];return el&&el.offsetParent!==null;}
-function anyMiniColoredOrTyped(onlyVisible=false){const blank=COLORS.findIndex(c=>c.key==='blank'); for(let idx=0;idx<days.length;idx++){if(onlyVisible&&!dayInView(idx))continue;const d=days[idx];for(let i=0;i<6;i++){if(d.grid[i]!==blank) return true; if(d.letters[i]) return true;}} return false;}
+function anyMiniColoredOrTyped(onlyVisible=false){const blank=COLORS.findIndex(c=>c.key==='blank'); for(let idx=0;idx<days.length;idx++){if(onlyVisible&&!dayInView(idx))continue;const d=days[idx];if(isMonthLocked(d.year,d.monthIndex))continue;for(let i=0;i<6;i++){if(d.grid[i]!==blank) return true; if(d.letters[i]) return true;}} return false;}
 function resetMinisInRange(a,b,onlyVisible=false){
   const blank=COLORS.findIndex(c=>c.key==='blank');
   for(let i=a;i<=b;i++){
     if(onlyVisible&&!dayInView(i))continue;
-    days[i].grid=[blank,blank,blank,blank,blank,blank];
-    days[i].letters=["","","","","",""];
-    days[i].isHoliday=false;
+    const d=days[i];
+    if(isMonthLocked(d.year,d.monthIndex))continue;
+    d.grid=[blank,blank,blank,blank,blank,blank];
+    d.letters=["","","","","",""];
+    d.isHoliday=false;
     const el=dayEls[i];
     if(el){
       el.classList.remove('holiday');
@@ -363,7 +373,7 @@ function resetMinisInRange(a,b,onlyVisible=false){
   }
   recalcAllBoxes();
 }
-function removeAllBarriers(onlyVisible=false){clearFocus(); for(const pos of [...barriers]){if(onlyVisible&&!(dayInView(pos-1)||dayInView(pos)))continue;barriers.delete(pos); updateDayBorders(pos); const bx=barrierBoxes.get(pos); if(bx){bx.el.remove(); barrierBoxes.delete(pos);} } refreshTermsLegend();}
+function removeAllBarriers(onlyVisible=false){clearFocus(); for(const pos of [...barriers]){if(onlyVisible&&!(dayInView(pos-1)||dayInView(pos)))continue;const left=days[pos-1],right=days[pos];if((left&&isMonthLocked(left.year,left.monthIndex))||(right&&isMonthLocked(right.year,right.monthIndex)))continue;barriers.delete(pos); updateDayBorders(pos); const bx=barrierBoxes.get(pos); if(bx){bx.el.remove(); barrierBoxes.delete(pos);} } refreshTermsLegend();}
 function barriersInView(){for(const pos of barriers){if(dayInView(pos-1)||dayInView(pos))return true;}return false;}
 
 function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;const phase=-(elapsed%GLIMMER_PERIOD);const els=document.querySelectorAll('.day.holiday');els.forEach(el=>{el.style.setProperty('--glimmer-phase',phase+'s');});const gbar=document.getElementById('globalBar');if(gbar&&gbar.classList.contains('open')){gbar.style.setProperty('--glimmer-phase',phase+'s');}const useAlt=glimmerFlip;els.forEach(el=>{el.classList.toggle('sync2',useAlt);});if(gbar&&gbar.classList.contains('open'))gbar.classList.toggle('sync2',useAlt);glimmerFlip=!glimmerFlip;}
@@ -391,6 +401,8 @@ const globalToggle=document.getElementById('globalToggle');const globalBar=docum
 function isEditingTarget(el){return el&&(el.isContentEditable||el.tagName==='INPUT'||el.tagName==='TEXTAREA')}
 window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='t'&&!e.repeat&&!isEditingTarget(e.target))tHeld=true});
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='t')tHeld=false});
+window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='l'&&!e.repeat&&!isEditingTarget(e.target))lHeld=true});
+window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='l')lHeld=false});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return; if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); if(anyOpenTerms||anyOpenNotes){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
 
 // keep boxes positioned
