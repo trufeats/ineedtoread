@@ -20,6 +20,8 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .header-left{display:flex;align-items:center;gap:16px}
 .app-title{font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .planner-title{position:absolute;left:50%;transform:translateX(-50%);font-weight:700;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.month-nav{display:flex;gap:4px;margin-left:8px}
+.btn.small{padding:4px 6px;font-size:12px}
 .hint{color:var(--muted);font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.03)}
 .legend-dot{width:12px;height:12px;border-radius:50%;display:inline-block}
@@ -79,10 +81,21 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 @keyframes spin{to{transform:rotate(360deg);}}
 .mini-char{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;user-select:text;pointer-events:none}
 .mini.blank .mini-char{color:#fff}
-.mini-mark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;pointer-events:none;color:#fff;text-shadow:0 0 2px #000}
+.mini-mark{position:absolute;inset:0;pointer-events:none}
+.mini.mark-x .mini-mark,
+.mini.mark-check .mini-mark{display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;text-shadow:0 0 2px #000}
+.mini.mark-x .mini-mark::before{content:"✕"}
+.mini.mark-check .mini-mark::before{content:"✓"}
+.mini.mark-gift .mini-mark::before,
+.mini.mark-gift .mini-mark::after{content:"";position:absolute;background:#fff}
+.mini.mark-gift .mini-mark::before{top:50%;left:2px;right:2px;height:2px;transform:translateY(-1px)}
+.mini.mark-gift .mini-mark::after{left:50%;top:2px;bottom:2px;width:2px;transform:translateX(-1px)}
 /* ensure legible mini text in light mode on blank cells */
 .light .mini.blank .mini-char{color:#000}
-.light .mini-mark{color:#000;text-shadow:0 0 2px #fff}
+.light .mini.mark-x .mini-mark,
+.light .mini.mark-check .mini-mark{color:#000;text-shadow:0 0 2px #fff}
+.light .mini.mark-gift .mini-mark::before,
+.light .mini.mark-gift .mini-mark::after{background:#000}
 /* hide caret everywhere by default; re-enable only where typing is intended */
 *{caret-color:transparent}
 .label,.box-title,.note-content,input,textarea,.iebox .box-body textarea,.mini.editing .mini-char{caret-color:auto}
@@ -108,6 +121,13 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .day.multi-selected.sync2::after{animation-name:glimmer2}
 .light .day.multi-selected{background:#ffe680!important;color:#000;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset}
 .light .day.multi-selected .mini{border-color:rgba(0,0,0,.3)}
+.day.clone-source{background:#ea4335!important;color:#000;box-shadow:0 0 0 1px rgba(0,0,0,.4) inset}
+.day.clone-source .day-number{color:#000}
+.day.clone-source .mini{border-color:rgba(0,0,0,.4)}
+.day.clone-source::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.25) 50%,transparent 65%);transform:translateX(-150%);animation:glimmer 3.2s linear infinite;animation-delay:var(--glimmer-phase,0s);pointer-events:none}
+.day.clone-source.sync2::after{animation-name:glimmer2}
+.light .day.clone-source{background:#ffb3a9!important;color:#000;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset}
+.light .day.clone-source .mini{border-color:rgba(0,0,0,.3)}
   0%{opacity:.6;background-position:0 0,4px 4px}
   100%{opacity:1;background-position:4px 4px,0 0}
 }
@@ -139,6 +159,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .iebox .box-header{cursor:grab}
 .iebox .box-body textarea{width:100%;height:140px;background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--ink);border-radius:8px;padding:8px;resize:vertical}
 .light .iebox .box-body textarea{color:var(--ink-light);background:#fff;border-color:#d5dce6}
+.light .iebox .box-body .hint{color:#5b6773;text-shadow:none}
 .footer-spacer{height:40px}
 .signature{position:fixed;bottom:8px;right:8px;font-size:12px;color:var(--muted);cursor:pointer}
 .smiley-mode .day[data-left-barrier="1"],.smiley-mode .day[data-right-barrier="1"]{border-left-color:transparent;border-right-color:transparent}
@@ -152,7 +173,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 </head>
 <body>
 <header class="app-header">
-  <div class="header-left"><div class="app-title">Term Planner</div><div id="monthRange" class="hint"></div></div>
+  <div class="header-left"><div class="app-title">Term Planner</div><div id="monthRange" class="hint"></div><div class="month-nav"><button id="prevMonthBtn" class="btn small" title="Add previous month">&laquo;</button><button id="nextMonthBtn" class="btn small" title="Add next month">&raquo;</button></div></div>
   <div id="plannerTitle" class="planner-title">Planner</div>
 </header>
 
@@ -169,8 +190,6 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 </div>
 
   <div class="toolbar" style="margin-top:0">
-    <button id="prevMonthBtn" class="btn" title="Add previous month">&laquo; Prev</button>
-    <button id="nextMonthBtn" class="btn" title="Add next month">Next &raquo;</button>
     <button id="colsBtn" class="btn" title="Adjust mini columns">Cols: 2</button>
     <button id="globalToggle" class="btn" title="Apply to all weekdays">Global</button>
   </div>
@@ -227,7 +246,7 @@ let globalTemplate=Array.from({length:7},()=>Array(miniCount()).fill(blankCode))
 let globalLetters=Array.from({length:7},()=>Array(miniCount()).fill(""));
 let globalMarks=Array.from({length:7},()=>Array(miniCount()).fill(0));
 const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map();
-let noteSeq=1,activeFocusPos=null,tHeld=false,lHeld=false,numberHeld=null,xHeld=false,zHeld=false,cHeld=false;
+let noteSeq=1,activeFocusPos=null,tHeld=false,lHeld=false,numberHeld=null,xHeld=false,zHeld=false,cHeld=false,spaceHeld=false,cloneSourceDay=null;
 const monthsRoot=document.getElementById('months'),wrap=document.getElementById('calendarWrap');
 const plannerTitleEl=document.getElementById('plannerTitle');
 const monthSections=new Map(),monthOrder=[],lockedMonths=new Set();
@@ -312,7 +331,7 @@ function renderDayCells(){
       day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } const markHeld=xHeld?1:zHeld?2:cHeld?3:0; if(markHeld){ saveState(); const newMark=d.marks[i]===markHeld?0:markHeld; d.marks[i]=newMark; applyMiniMark(mini,newMark); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.marks[i]=newMark;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniMark(oel,newMark);}} return; } saveState(); let code=d.grid[i]; let base=Math.floor(code/10), shade=code%10; if(numberHeld!==null && base!==charcoalIdx && base!==blankIndex){ shade=numberHeld; } else { base=ev.shiftKey?((base-1+COLORS.length)%COLORS.length):((base+1)%COLORS.length); if(base===blankIndex||base===charcoalIdx) shade=0; } code=base*10+shade; d.grid[i]=code; applyMiniColor(mini,code); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=code;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,code);if(easterState&&easterCharDays.has(idx)&&Math.floor(code/10)===blankIndex)triggerAnger(od.year,od.monthIndex);}} recalcAllBoxes(); if(easterState&&easterCharDays.has(di)&&Math.floor(code/10)===blankIndex){triggerAnger(d.year,d.monthIndex);} });
       day.querySelectorAll('.barrier-handle').forEach(h=>h.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; ev.stopPropagation(); const edge=h.dataset.edge, idx=+day.dataset.index, pos=(edge==='left')?idx:(idx+1); if(ev.shiftKey){showBarrierBox(pos);return;} toggleBarrier(pos);}));
       day.querySelector('.day-number').addEventListener('click',()=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; openBoxForDay(+day.dataset.index);});
-      day.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; const idx=+day.dataset.index; if(ev.shiftKey){toggleMultiSelect(idx);return;} if(selectedDays.size){toggleHolidayMulti(idx);return;} toggleHoliday(idx); });
+      day.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; const idx=+day.dataset.index; if(spaceHeld){ if(cloneSourceDay===idx){exitCloneMode();} else if(cloneSourceDay==null){ if(!daySelectable(idx)) return; cloneSourceDay=idx; dayEls[idx].classList.add('clone-source'); syncAllGlimmers(); } else { if(!daySelectable(idx)){exitCloneMode();return;} saveState(); const src=days[cloneSourceDay],dst=days[idx]; dst.grid=src.grid.slice(); dst.letters=src.letters.slice(); dst.marks=src.marks.slice(); dst.isHoliday=false; const minis=dayEls[idx].querySelectorAll('.mini'); minis.forEach((m,i)=>{applyMiniColor(m,dst.grid[i]);applyMiniLetter(m,dst.letters[i]);applyMiniMark(m,dst.marks[i]);}); recalcAllBoxes(); } return;} if(cloneSourceDay!=null){ if(idx===cloneSourceDay){exitCloneMode();return;} if(!daySelectable(idx)){exitCloneMode();return;} saveState(); const src=days[cloneSourceDay],dst=days[idx]; dst.grid=src.grid.slice(); dst.letters=src.letters.slice(); dst.marks=src.marks.slice(); dst.isHoliday=false; const minis=dayEls[idx].querySelectorAll('.mini'); minis.forEach((m,i)=>{applyMiniColor(m,dst.grid[i]);applyMiniLetter(m,dst.letters[i]);applyMiniMark(m,dst.marks[i]);}); recalcAllBoxes(); return;} if(ev.shiftKey){toggleMultiSelect(idx);return;} if(selectedDays.size){toggleHolidayMulti(idx);return;} toggleHoliday(idx); });
       day.querySelectorAll('.mini').forEach((mini,i)=>{ applyMiniColor(mini,d.grid[i]); applyMiniLetter(mini,d.letters[i]); applyMiniMark(mini,d.marks[i]); });
       grid.appendChild(day); dayEls.push(day); gi++;
     }
@@ -323,18 +342,19 @@ function dayIsVisible(i){const d=days[i];const key=d.year+'-'+d.monthIndex;const
 function daySelectable(i){const d=days[i];return d&&!d.isHoliday&&!isMonthLocked(d.year,d.monthIndex);}
 function toggleMultiSelect(i){if(selectedDays.has(i)){dayEls[i].classList.remove('multi-selected');selectedDays.delete(i);if(selectedDays.size===0)syncAllGlimmers();return;}if(!daySelectable(i))return;selectedDays.add(i);dayEls[i].classList.add('multi-selected');syncAllGlimmers();}
 function exitMultiSelect(){selectedDays.forEach(idx=>dayEls[idx].classList.remove('multi-selected'));selectedDays.clear();syncAllGlimmers();}
+function exitCloneMode(){if(cloneSourceDay==null)return;dayEls[cloneSourceDay].classList.remove('clone-source');cloneSourceDay=null;syncAllGlimmers();}
 function resetSelectedDays(){saveState();const blank=blankCode;selectedDays.forEach(idx=>{const d=days[idx];d.grid=Array(miniCount()).fill(blank);d.letters=Array(miniCount()).fill("");d.marks=Array(miniCount()).fill(0);d.isHoliday=false;const el=dayEls[idx];el.classList.remove('holiday');const minis=el.querySelectorAll('.mini');minis.forEach(m=>{applyMiniColor(m,blank);applyMiniLetter(m,'');applyMiniMark(m,0);});});exitMultiSelect();recalcAllBoxes();}
 function globalTemplateEmpty(){for(let wd=0;wd<7;wd++){for(let i=0;i<miniCount();i++){if(globalTemplate[wd][i]!==blankCode||globalLetters[wd][i]||globalMarks[wd][i])return false;}}return true;}
 function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<miniCount();i++){globalTemplate[wd][i]=blankCode;globalLetters[wd][i]='';globalMarks[wd][i]=0;}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyGlobalMiniColor(m,blankCode);applyMiniLetter(m,'');applyMiniMark(m,0);});}
 function setMiniColumns(cols){if(cols<1||cols>5)return;miniCols=cols;const mc=miniCount();globalTemplate=Array.from({length:7},()=>Array(mc).fill(blankCode));globalLetters=Array.from({length:7},()=>Array(mc).fill(""));globalMarks=Array.from({length:7},()=>Array(mc).fill(0));for(const d of days){const oldGrid=d.grid,oldLetters=d.letters,oldMarks=d.marks;const oc=oldGrid.length/ROWS;const ng=[],nl=[],nm=[];for(let r=0;r<ROWS;r++){for(let c=0;c<miniCols;c++){if(c<oc){const oi=r*oc+c;ng.push(oldGrid[oi]);nl.push(oldLetters[oi]);nm.push(oldMarks?oldMarks[oi]||0:0);}else{ng.push(blankCode);nl.push('');nm.push(0);}}}d.grid=ng;d.letters=nl;d.marks=nm;}dayEls.forEach((dayEl,di)=>{const newGrid=document.createElement('div');newGrid.className='mini-grid';newGrid.style.gridTemplateColumns=`repeat(${miniCols},1fr)`;newGrid.style.gridTemplateRows=`repeat(${ROWS},1fr)`;newGrid.innerHTML=Array.from({length:mc}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span><span class="mini-mark"></span></div>`).join('');const d=days[di];newGrid.addEventListener('click',ev=>{if(isMonthLocked(d.year,d.monthIndex)) return;const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;const di2=di;if(tHeld){saveState();startMiniEdit(d,i,mini,di2);return}const markHeld=xHeld?1:zHeld?2:cHeld?3:0;if(markHeld){saveState();const newMark=d.marks[i]===markHeld?0:markHeld;d.marks[i]=newMark;applyMiniMark(mini,newMark);if(selectedDays.size){for(const idx of selectedDays){if(idx===di2)continue;const od=days[idx];od.marks[i]=newMark;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniMark(oel,newMark);}}return;}saveState();let code=d.grid[i];let base=Math.floor(code/10),shade=code%10;if(numberHeld!==null&&base!==charcoalIdx&&base!==blankIndex){shade=numberHeld;}else{base=ev.shiftKey?((base-1+COLORS.length)%COLORS.length):((base+1)%COLORS.length);if(base===blankIndex||base===charcoalIdx)shade=0;}code=base*10+shade;d.grid[i]=code;applyMiniColor(mini,code);if(selectedDays.size){for(const idx of selectedDays){if(idx===di2)continue;const od=days[idx];od.grid[i]=code;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,code);if(easterState&&easterCharDays.has(idx)&&Math.floor(code/10)===blankIndex)triggerAnger(od.year,od.monthIndex);}}recalcAllBoxes();if(easterState&&easterCharDays.has(di2)&&Math.floor(code/10)===blankIndex){triggerAnger(d.year,d.monthIndex);}});const old=dayEl.querySelector('.mini-grid');dayEl.replaceChild(newGrid,old);newGrid.querySelectorAll('.mini').forEach((mini,i)=>{applyMiniColor(mini,d.grid[i]);applyMiniLetter(mini,d.letters[i]);applyMiniMark(mini,d.marks[i]);});});buildGlobalWeek();}
 function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid" style="grid-template-columns:repeat(${miniCols},1fr);grid-template-rows:repeat(${ROWS},1fr);">${Array.from({length:miniCount()}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span><span class="mini-mark"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}const markHeld=xHeld?1:zHeld?2:cHeld?3:0;if(markHeld){const newMark=globalMarks[wd][i]==markHeld?0:markHeld;globalMarks[wd][i]=newMark;applyMiniMark(mini,newMark);return}let code=globalTemplate[wd][i];let base=Math.floor(code/10), shade=code%10;if(numberHeld!==null && base!==charcoalIdx && base!==blankIndex && base!==blackHoleIndex){shade=numberHeld;}else{base=ev.shiftKey?((base-1+GLOBAL_COLORS.length)%GLOBAL_COLORS.length):((base+1)%GLOBAL_COLORS.length);if(base===blankIndex||base===charcoalIdx||base===blackHoleIndex)shade=0;}code=base*10+shade;globalTemplate[wd][i]=code;applyGlobalMiniColor(mini,code);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyGlobalMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);applyMiniMark(mini,globalMarks[wd][i]);});container.appendChild(day);}}
 function startGlobalMiniEdit(wd,idx,el){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');globalLetters[wd][idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,globalLetters[wd][idx]);s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
-function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<miniCount();j++){const color=globalTemplate[wd][j];const base=Math.floor(color/10), shade=color%10;const mark=globalMarks[wd][j];if(base===blankIndex&&mark===0)continue;const el=dayEls[i].querySelectorAll('.mini')[j];if(base===blackHoleIndex){d.grid[j]=blankCode;d.letters[j]='';d.marks[j]=0;applyMiniColor(el,blankCode);applyMiniLetter(el,'');applyMiniMark(el,0);}else{if(base!==blankIndex){d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}if(mark||base!==blankIndex){d.marks[j]=mark;applyMiniMark(el,mark);}}if(easterState&&easterCharDays.has(i)&&Math.floor(d.grid[j]/10)===blankIndex){triggerAnger(d.year,d.monthIndex);}}}recalcAllBoxes();}
+function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<miniCount();j++){const color=globalTemplate[wd][j];const base=Math.floor(color/10), shade=color%10;const el=dayEls[i].querySelectorAll('.mini')[j];if(base===blackHoleIndex){d.grid[j]=blankCode;d.letters[j]='';d.marks[j]=0;applyMiniColor(el,blankCode);applyMiniLetter(el,'');applyMiniMark(el,0);}else if(base!==blankIndex){d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}if(easterState&&easterCharDays.has(i)&&Math.floor(d.grid[j]/10)===blankIndex){triggerAnger(d.year,d.monthIndex);}}}recalcAllBoxes();}
 function applyMiniColor(el,code){const base=Math.floor(code/10), shade=code%10;const css=COLORS[base]?COLORS[base].css:'blank';el.className='mini '+css;el.style.background='';if(base===blackHoleIndex&&GLOBAL_COLORS[base]){el.className='mini '+GLOBAL_COLORS[base].css;}else if(base!==blankIndex&&base!==charcoalIdx){if(shade){const hex=getCSSVar(COLORS[base].key);el.style.background=shadeColor(hex,shade);} }
 }
 function applyGlobalMiniColor(el,code){const base=Math.floor(code/10), shade=code%10;el.className='mini '+GLOBAL_COLORS[base].css;el.style.background='';if(base!==blankIndex&&base!==charcoalIdx&&base!==blackHoleIndex){if(shade){const hex=getCSSVar(GLOBAL_COLORS[base].key);el.style.background=shadeColor(hex,shade);} }}
 function applyMiniLetter(el,t){const s=el.querySelector('.mini-char');if(s)s.textContent=(t||'').slice(0,1)}
-function applyMiniMark(el,m){const s=el.querySelector('.mini-mark');if(s)s.textContent=m===1?'✕':m===2?'✓':m===3?'🎁':''}
+function applyMiniMark(el,m){const s=el.querySelector('.mini-mark');if(s)s.textContent='';el.classList.toggle('mark-x',m===1);el.classList.toggle('mark-check',m===2);el.classList.toggle('mark-gift',m===3)}
 function startMiniEdit(d,idx,el,dayIdx){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');d.letters[idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,d.letters[idx]);if(selectedDays.size){for(const j of selectedDays){if(j===dayIdx)continue;days[j].letters[idx]=d.letters[idx];const oel=dayEls[j].querySelectorAll('.mini')[idx];applyMiniLetter(oel,d.letters[idx]);}}s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
 function updateDayBorders(pos){const L=pos-1,R=pos;if(dayEls[L]){barriers.has(pos)?dayEls[L].dataset.rightBarrier='1':delete dayEls[L].dataset.rightBarrier}if(dayEls[R]){barriers.has(pos)?dayEls[R].dataset.leftBarrier='1':delete dayEls[R].dataset.leftBarrier}}
 function nearestPrevBarrier(pos){let prev=0;for(const p of Array.from(barriers).sort((a,b)=>a-b)){if(p<pos)prev=p;else break}return prev}
@@ -550,8 +570,13 @@ document.getElementById('notesLegend').addEventListener('click',e=>{
   else {b.el.style.display='none';b.closed=true}
 });
 document.addEventListener('mousedown',e=>{
-  if(!selectedDays.size)return;
   const dayEl=e.target.closest('.day');
+  if(cloneSourceDay!=null){
+    if(!dayEl){exitCloneMode();return;}
+    const idx=+dayEl.dataset.index;
+    if(idx===cloneSourceDay){exitCloneMode();e.preventDefault();e.stopPropagation();return;}
+  }
+  if(!selectedDays.size)return;
   if(dayEl&&e.shiftKey)return;
   if(!dayEl||dayEl.closest('#globalBar')||!selectedDays.has(+dayEl.dataset.index)){exitMultiSelect();e.preventDefault();e.stopPropagation();}
 },true);
@@ -582,7 +607,7 @@ function resetMinisInRange(a,b,onlyVisible=false,skipRecord=false){if(!skipRecor
 function removeAllBarriers(onlyVisible=false){saveState();clearFocus(); for(const pos of [...barriers]){if(onlyVisible&&!(dayInView(pos-1)||dayInView(pos)))continue;const left=days[pos-1],right=days[pos];if((left&&isMonthLocked(left.year,left.monthIndex))||(right&&isMonthLocked(right.year,right.monthIndex)))continue;barriers.delete(pos); updateDayBorders(pos); const bx=barrierBoxes.get(pos); if(bx){bx.el.remove(); barrierBoxes.delete(pos);} } refreshTermsLegend();}
 function barriersInView(){for(const pos of barriers){if(dayInView(pos-1)||dayInView(pos))return true;}return false;}
 
-function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;const phase=-(elapsed%GLIMMER_PERIOD);document.querySelectorAll('.day.holiday, .day.multi-selected, .global-bar.open .global-content').forEach(el=>{el.style.setProperty('--glimmer-phase',phase+'s');});const spinPhase=-(elapsed%SPIN_PERIOD);document.querySelectorAll('.mini.black-hole').forEach(el=>{el.style.setProperty('--spin-phase',spinPhase+'s');});const useAlt=glimmerFlip;document.querySelectorAll('.day.holiday, .day.multi-selected').forEach(el=>{el.classList.toggle('sync2',useAlt);});const gContent=document.querySelector('.global-bar.open .global-content');if(gContent)gContent.classList.toggle('sync2',useAlt);glimmerFlip=!glimmerFlip;}
+function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;const phase=-(elapsed%GLIMMER_PERIOD);document.querySelectorAll('.day.holiday, .day.multi-selected, .day.clone-source, .global-bar.open .global-content').forEach(el=>{el.style.setProperty('--glimmer-phase',phase+'s');});const spinPhase=-(elapsed%SPIN_PERIOD);document.querySelectorAll('.mini.black-hole').forEach(el=>{el.style.setProperty('--spin-phase',spinPhase+'s');});const useAlt=glimmerFlip;document.querySelectorAll('.day.holiday, .day.multi-selected, .day.clone-source').forEach(el=>{el.classList.toggle('sync2',useAlt);});const gContent=document.querySelector('.global-bar.open .global-content');if(gContent)gContent.classList.toggle('sync2',useAlt);glimmerFlip=!glimmerFlip;}
 
 // init
 updatePlannerTitle();
@@ -621,9 +646,11 @@ window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='z'&&!e.re
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='z')zHeld=false});
 window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='c'&&!e.repeat&&!isEditingTarget(e.target))cHeld=true});
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='c')cHeld=false});
+window.addEventListener('keydown',e=>{if(e.key===' '&&!e.repeat&&!isEditingTarget(e.target)) {spaceHeld=true;e.preventDefault();}});
+window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false});
 window.addEventListener('keydown',e=>{if(!isEditingTarget(e.target)&&/^[0-9]$/.test(e.key)&&!e.repeat)numberHeld=parseInt(e.key,10);});
 window.addEventListener('keyup',e=>{if(/^[0-9]$/.test(e.key))numberHeld=null;});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return;if(selectedDays.size){resetSelectedDays();return;} if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); const ieOpen=ieEl&&ieEl.style.display!=='none'; if(anyOpenTerms||anyOpenNotes||ieOpen){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!ieOpen&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return;if(cloneSourceDay!=null){exitCloneMode();return;}if(selectedDays.size){resetSelectedDays();return;} if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); const ieOpen=ieEl&&ieEl.style.display!=='none'; if(anyOpenTerms||anyOpenNotes||ieOpen){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!ieOpen&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
 window.addEventListener('keydown',e=>{if(isEditingTarget(e.target))return;if(e.key===','){e.preventDefault();undo();}else if(e.key==='.'){e.preventDefault();redo();}});
 
 // keep boxes positioned
