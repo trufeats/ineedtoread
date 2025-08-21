@@ -136,6 +136,9 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .footer-spacer{height:40px}
 .signature{position:fixed;bottom:8px;right:8px;font-size:12px;color:var(--muted);cursor:pointer}
 .smiley-mode .day[data-left-barrier="1"],.smiley-mode .day[data-right-barrier="1"]{border-left-color:transparent;border-right-color:transparent}
+.anger-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:1000;animation:angerFade 3s forwards}
+@keyframes angerFade{0%{background:rgba(0,0,0,0)}40%{background:#000}70%{background:#a00}100%{background:rgba(255,0,0,0)}}
+.mini.fang{background:#fff!important}
 ::selection{background:#2d61ff;color:#fff}
 @media(max-width:1100px){.months{grid-template-columns:repeat(2,minmax(260px,1fr))}}
 @media(max-width:780px){.months{grid-template-columns:1fr}}
@@ -217,7 +220,7 @@ const GLIMMER_PERIOD=3.2,SPIN_PERIOD=3,glimmerBase=performance.now(); let glimme
 const selectedDays=new Set();
 const undoStack=[], redoStack=[];
 let plannerTitle='Planner';
-let easterState=null;
+let easterState=null, angryMonths=new Set(), easterMonthMap=null;
 
 function updatePlannerTitle(){if(plannerTitleEl) plannerTitleEl.textContent=plannerTitle;}
 if(plannerTitleEl){plannerTitleEl.addEventListener('click',()=>{const name=prompt('Planner name',plannerTitle);if(name!==null){plannerTitle=name.trim()||'Planner';updatePlannerTitle();}});}
@@ -288,7 +291,7 @@ function renderDayCells(){
 <div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class=\"mini blank\" data-mini=\"${i}\"><span class=\"mini-char\"></span></div>`).join('')}</div>
 <div class="barrier-handle left" data-edge="left" title="Toggle barrier (left)"></div>
 <div class="barrier-handle right" data-edge="right" title="Toggle barrier (right)"></div>`;
-      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } saveState(); const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=next;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,next);}} recalcAllBoxes(); });
+      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } saveState(); const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=next;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,next);}} recalcAllBoxes(); if(easterState&&cur===charcoalIdx&&next===blankIndex){triggerAnger(d.year,d.monthIndex);} });
       day.querySelectorAll('.barrier-handle').forEach(h=>h.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; ev.stopPropagation(); const edge=h.dataset.edge, idx=+day.dataset.index, pos=(edge==='left')?idx:(idx+1); if(ev.shiftKey){showBarrierBox(pos);return;} toggleBarrier(pos);}));
       day.querySelector('.day-number').addEventListener('click',()=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; openBoxForDay(+day.dataset.index);});
       day.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; const idx=+day.dataset.index; if(ev.shiftKey){toggleMultiSelect(idx);return;} if(selectedDays.size){toggleHolidayMulti(idx);return;} toggleHoliday(idx); });
@@ -452,8 +455,9 @@ updatePlannerTitle();
 refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res()}catch(e){rej(e)}})}
 
 async function toggleEaster(){
-  if(easterState){await importState(easterState);easterState=null;document.body.classList.remove('smiley-mode');return;}
+  if(easterState){await importState(easterState);easterState=null;document.body.classList.remove('smiley-mode');angryMonths.clear();easterMonthMap=null;return;}
   easterState=await exportState();
+  angryMonths.clear();
   closeAllBoxes();
   document.body.classList.add('smiley-mode');
   document.querySelectorAll('.month').forEach(m=>m.classList.remove('locked'));
@@ -471,6 +475,32 @@ async function toggleEaster(){
     [1,5].forEach(c=>{const gi=idxAt(1,c); if(gi!=null){const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
     [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c); if(gi!=null){const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
   });
+  easterMonthMap=monthMap;
+}
+
+function triggerAnger(y,m){
+  const key=monthKey(y,m);
+  if(!easterMonthMap||!easterMonthMap.has(key)||angryMonths.has(key))return;
+  angryMonths.add(key);
+  const overlay=document.createElement('div');
+  overlay.className='anger-overlay';
+  overlay.addEventListener('animationend',()=>{overlay.remove();angerMonth(key);});
+  document.body.appendChild(overlay);
+}
+
+function angerMonth(key){
+  const indices=easterMonthMap.get(key);if(!indices)return;
+  const redIdx=COLORS.findIndex(c=>c.key==='red');
+  const charcoalIdx=COLORS.findIndex(c=>c.key==='charcoal');
+  const first=days[indices[0]].weekDay;
+  indices.forEach(i=>{
+    const d=days[i];d.isHoliday=false;d.grid=Array(6).fill(redIdx);d.letters=["","","","","",""];
+    const el=dayEls[i];if(el){el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{m.classList.remove('fang');applyMiniColor(m,redIdx);applyMiniLetter(m,'');});}
+  });
+  function idxAt(r,c){const dayNum=r*7+c-first+1;if(dayNum<1||dayNum>indices.length)return null;return indices[dayNum-1];}
+  [1,5].forEach(c=>{const gi=idxAt(1,c);if(gi!=null){const d=days[gi];d.grid=Array(6).fill(charcoalIdx);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+  [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c);if(gi!=null){const d=days[gi];d.grid=Array(6).fill(charcoalIdx);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+  [2,4].forEach(c=>{const gi=idxAt(3,c);if(gi!=null){const d=days[gi];d.grid=Array(6).fill(blankIndex);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>{m.classList.add('fang');applyMiniColor(m,blankIndex);});}});
 }
 
 const signature=document.getElementById('signature');if(signature)signature.addEventListener('click',()=>{toggleEaster();});
