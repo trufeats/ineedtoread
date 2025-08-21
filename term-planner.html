@@ -157,6 +157,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
   <button id="themeToggle" class="btn" title="Toggle light/dark">☀️ / 🌙</button>
   
   <button id="ieToggle" class="btn" title="Import / Export">⇄ Import/Export</button>
+  <button id="legacyImportBtn" class="btn" title="Import from old version">Legacy Import</button>
   <button id="termsTxtBtn" class="btn" title="Export term summary">Export Summary</button>
   <button id="pdfBtn" class="btn" title="Download PDF">Download PDF</button>
 
@@ -474,6 +475,8 @@ if(parts[8]){try{plannerTitle=atob(parts[8]);}catch{plannerTitle='Planner';}}els
 updatePlannerTitle();
 refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res()}catch(e){rej(e)}})}
 
+function importLegacyState(str){return new Promise((res,rej)=>{try{const data=JSON.parse(str);clearAll();if(Array.isArray(data.days)){const len=Math.min(data.days.length,days.length);for(let i=0;i<len;i++){const src=data.days[i];const d=days[i];if(src.grid) d.grid=src.grid.slice(0,miniCount()).map(v=>v|0);if(src.letters) d.letters=src.letters.slice(0,miniCount());d.isHoliday=!!src.isHoliday||!!src.holiday;applyDayVisual(i);}}if(Array.isArray(data.barriers)){for(const off of data.barriers){const pos=(off|0)+1;if(!barriers.has(pos))toggleBarrier(pos,true);}}if(Array.isArray(data.terms)){for(const t of data.terms){const pos=(t.o|0)+1;const b=barrierBoxes.get(pos);if(b){b.title=t.t||'';b.closed=true;b.el.querySelector('.box-title').textContent=b.title;b.el.style.display='none';}}}if(Array.isArray(data.notes)){for(const n of data.notes){const id=noteSeq++;const box=createNoteBox(id);notesBoxes.set(id,box);box.title=n.t||'';box.el.querySelector('.box-title').textContent=box.title;box.el.querySelector('.note-content').textContent=n.b||'';box.closed=true;box.el.style.display='none';if(n.x!=null)box.el.style.left=n.x+'px';if(n.y!=null)box.el.style.top=n.y+'px';if(n.w!=null)box.el.style.width=n.w+'px';if(n.h!=null)box.el.style.height=n.h+'px';}}if(data.labels){for(const k in data.labels)colorLabels[k]=data.labels[k];}refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res();}catch(e){rej(e);}});}
+
 async function toggleEaster(){
   if(easterState){await importState(easterState);easterState=null;document.body.classList.remove('smiley-mode');angryMonths.clear();easterMonthMap=null;easterCharDays.clear();return;}
   easterState=await exportState();
@@ -584,6 +587,7 @@ const themeToggle=document.getElementById('themeToggle'); if(themeToggle){themeT
 const ieToggle=document.getElementById('ieToggle'); if(ieToggle){ieToggle.addEventListener('click',()=>{if(ieEl){if(ieEl.style.display==='none'){placeAtOrigin(ieEl);ieEl.style.display='';}else{ieEl.style.display='none';}} else createIE();});}
 const termsTxtBtn=document.getElementById('termsTxtBtn'); if(termsTxtBtn){termsTxtBtn.addEventListener('click',()=>{const txt=buildTermsReport();downloadTxt('terms-report.txt',txt)});}
 const pdfBtn=document.getElementById('pdfBtn'); if(pdfBtn){pdfBtn.addEventListener('click',()=>{printPlanner();});}
+const legacyImportBtn=document.getElementById('legacyImportBtn'); if(legacyImportBtn){legacyImportBtn.addEventListener('click',()=>{const s=prompt('Paste legacy export code'); if(!s) return; importLegacyState(s).catch(err=>alert('Legacy import failed: '+err));});}
 if(prevMonthBtn)prevMonthBtn.addEventListener('click',showPrevMonth);
 if(nextMonthBtn)nextMonthBtn.addEventListener('click',showNextMonth);
 const globalToggle=document.getElementById('globalToggle');const globalBar=document.getElementById('globalBar');if(globalToggle&&globalBar){globalToggle.addEventListener('click',()=>{const show=!globalBar.classList.contains('open');if(show){globalBar.classList.add('open');}else{globalBar.classList.remove('open');}globalToggle.textContent=show?'Hide global':'Global';syncAllGlimmers();});}
