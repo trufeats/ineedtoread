@@ -199,6 +199,24 @@ header {
 .team.blue { background-image: linear-gradient(-45deg, #4d4dff, #0000ff, #000099, #4d4dff); }
 .team.green { background-image: linear-gradient(-45deg, #4dff4d, #00cc00, #006600, #4dff4d); }
 .team.white { background-image: linear-gradient(-45deg, #ffffff, #eeeeee, #cccccc, #ffffff); color: #000; }
+.team.white::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), transparent 60%),
+              radial-gradient(circle at 70% 70%, rgba(180,180,180,0.4), transparent 60%),
+              radial-gradient(circle at 40% 60%, rgba(120,120,120,0.5), transparent 60%);
+  animation: whiteOrbs 12s linear infinite;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  clip-path: inherit;
+}
+
+@keyframes whiteOrbs {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
 
 @keyframes colorShift {
   0% { filter: hue-rotate(0deg) brightness(1); }
@@ -278,15 +296,15 @@ header {
 }
 
 #ball.black {
-  width: 150px;
-  height: 150px;
+  width: 350px;
+  height: 350px;
   background: radial-gradient(circle, #000, #333);
   box-shadow: 0 0 60px 20px rgba(0,0,0,0.9);
 }
 
 #ball.meteor {
-  width: 200px;
-  height: 200px;
+  width: 750px;
+  height: 750px;
   background: radial-gradient(circle, #800000, #ff0000);
   animation: fire 0.3s infinite alternate;
   box-shadow: 0 0 100px 35px rgba(255,0,0,1);
@@ -385,4 +403,26 @@ header {
 #screenOverlay.burgundy {
   background: radial-gradient(circle at center, rgba(128,0,0,0.8), rgba(255,0,0,0.6));
   animation: shift 6s linear infinite;
+}
+
+#screenOverlay.grey {
+  background: rgba(128,128,128,0.6);
+  animation: greyPulse 1s ease-in-out 2;
+}
+
+@keyframes greyPulse {
+  0%,100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+@keyframes rumble {
+  0%,100% { transform: translate(0,0); }
+  20% { transform: translate(-10px,0); }
+  40% { transform: translate(10px,0); }
+  60% { transform: translate(-10px,0); }
+  80% { transform: translate(10px,0); }
+}
+
+body.rumble {
+  animation: rumble 0.5s;
 }

@@ -38,6 +38,11 @@ let draggingHud = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 
+function isTyping(){
+  const el = document.activeElement;
+  return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+}
+
 setupScreen.querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
     const num = parseInt(btn.dataset.teams);
@@ -89,6 +94,9 @@ function teamClicked(i, e){
   const gameRect = gameArea.getBoundingClientRect();
   const x = e.clientX - gameRect.left;
   const y = e.clientY - gameRect.top;
+  if(ball.classList.contains('black') || ball.classList.contains('meteor')){
+    rumbleScreen();
+  }
   currentTeam = i;
   awaitingTeamSelection = false;
   controls.classList.remove('hidden');
@@ -174,8 +182,19 @@ function flashScreen(type){
   screenOverlay.className = type;
   screenOverlay.style.opacity = '1';
   setTimeout(() => {
-    screenOverlay.style.opacity = '0';
+    screenOverlay.style.opacity = '';
+    screenOverlay.className = '';
   }, 800);
+}
+
+function rumbleScreen(){
+  screenOverlay.style.opacity = '';
+  screenOverlay.className = 'grey';
+  document.body.classList.add('rumble');
+  setTimeout(() => {
+    screenOverlay.className = '';
+    document.body.classList.remove('rumble');
+  }, 1000);
 }
 
 function startTimer(){
@@ -281,7 +300,7 @@ function removeWord(span){
 }
 
 document.addEventListener('keydown', (e) => {
-  if(e.target.tagName === 'INPUT') return;
+  if(isTyping()) return;
   if(e.key === ','){
     undo();
   } else if(e.key === '.'){
@@ -290,7 +309,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if(e.target.tagName === 'INPUT') return;
+  if(isTyping()) return;
   if(e.key === 'x'){
     dragKeyDown = true;
   } else if(e.key === 'z'){
@@ -299,13 +318,19 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if(e.target.tagName === 'INPUT') return;
+  if(isTyping()) return;
   if(e.key === ' '){
     e.preventDefault();
     if(quickOverlay.classList.contains('hidden')) openQuick();
   } else if(e.key === 's'){
     e.preventDefault();
     if(searchOverlay.classList.contains('hidden')) openSearch();
+  } else if(e.key === 'a'){
+    e.preventDefault();
+    checkBtn.click();
+  } else if(e.key === 'd'){
+    e.preventDefault();
+    xBtn.click();
   }
 });
 
