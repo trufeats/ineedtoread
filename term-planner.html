@@ -487,7 +487,9 @@ async function toggleEaster(){
   closeAllBoxes();
   document.body.classList.add('smiley-mode');
   document.querySelectorAll('.month').forEach(m=>m.classList.remove('locked'));
+  lockedMonths.clear();
   const yellowIdx=COLORS.findIndex(c=>c.key==='yellow');
+  const yellowCode=yellowIdx*10;
   const monthMap=new Map();
   easterCharDays=new Set();
   days.forEach((d,i)=>{const key=d.year+'-'+d.monthIndex; if(!monthMap.has(key)) monthMap.set(key,[]); monthMap.get(key).push(i);});
