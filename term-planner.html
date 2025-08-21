@@ -15,6 +15,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--ink);background:linear-gradient(180deg,#0f1113 0%, #0b0c0e 60%) fixed}
 .app-header{position:sticky;top:0;z-index:50;backdrop-filter:blur(6px);background-color:rgba(16,18,20,.7);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:16px;padding:14px 18px}
 .app-title{font-weight:700}
+.planner-title{margin:0 auto;font-weight:700;cursor:pointer}
 .hint{color:var(--muted);font-size:12px}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.03)}
 .legend-dot{width:12px;height:12px;border-radius:50%;display:inline-block}
@@ -69,10 +70,11 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .mini:active{transform:scale(.98)}
 .mini.charcoal{background:var(--c-charcoal)}.mini.red{background:var(--c-red)}.mini.orange{background:var(--c-orange)}.mini.yellow{background:var(--c-yellow)}.mini.green{background:var(--c-green)}.mini.blue{background:var(--c-blue)}.mini.purple{background:var(--c-purple)}.mini.blank{background:transparent}
 .mini.black-hole{position:relative;overflow:hidden;background:#000;}
-.mini.black-hole::before{content:"";position:absolute;inset:-50%;background:conic-gradient(#8e24aa,#000,#8e24aa,#000,#8e24aa);animation:spin 3s linear infinite;}
-.mini.black-hole::after{content:"";position:absolute;inset:3px;background:#000;border-radius:50%;}
+.mini.black-hole::before{content:"";position:absolute;inset:-20%;background:conic-gradient(#8e24aa,#000,#8e24aa,#000,#8e24aa);animation:spin 3s linear infinite;animation-delay:var(--spin-phase,0s);}
+.mini.black-hole::after{content:"";position:absolute;inset:8px;background:#000;border-radius:50%;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .mini-char{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;user-select:text;pointer-events:none}
+.mini.blank .mini-char{color:#fff}
 /* ensure legible mini text in light mode on blank cells */
 .light .mini.blank .mini-char{color:#000}
 /* hide caret everywhere by default; re-enable only where typing is intended */
@@ -132,6 +134,8 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .iebox .box-body textarea{width:100%;height:140px;background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--ink);border-radius:8px;padding:8px;resize:vertical}
 .light .iebox .box-body textarea{color:var(--ink-light);background:#fff;border-color:#d5dce6}
 .footer-spacer{height:40px}
+.signature{position:fixed;bottom:8px;right:8px;font-size:12px;color:var(--muted);cursor:pointer}
+.smiley-mode .day[data-left-barrier="1"],.smiley-mode .day[data-right-barrier="1"]{border-left-color:transparent;border-right-color:transparent}
 ::selection{background:#2d61ff;color:#fff}
 @media(max-width:1100px){.months{grid-template-columns:repeat(2,minmax(260px,1fr))}}
 @media(max-width:780px){.months{grid-template-columns:1fr}}
@@ -140,6 +144,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 <body>
 <header class="app-header">
   <div class="app-title">Term Planner</div>
+  <div id="plannerTitle" class="planner-title">Planner</div>
   <div id="monthRange" class="hint"></div>
 </header>
 
@@ -187,6 +192,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
   <div id="calendar"><div class="months" id="months"></div></div>
 </div>
 <div class="footer-spacer"></div>
+<div id="signature" class="signature">by Vince Giuga</div>
 
 <script>
 (()=>{
@@ -203,12 +209,18 @@ const globalLetters=Array.from({length:7},()=>Array(6).fill(""));
 const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map();
 let noteSeq=1,activeFocusPos=null,tHeld=false,lHeld=false;
 const monthsRoot=document.getElementById('months'),wrap=document.getElementById('calendarWrap');
+const plannerTitleEl=document.getElementById('plannerTitle');
 const monthSections=new Map(),monthOrder=[],lockedMonths=new Set();
 let shownStartIdx=0,shownEndIdx=0;
 let prevMonthBtn=null,nextMonthBtn=null;
-const GLIMMER_PERIOD=3.2,glimmerBase=performance.now(); let glimmerFlip=false;
+const GLIMMER_PERIOD=3.2,SPIN_PERIOD=3,glimmerBase=performance.now(); let glimmerFlip=false;
 const selectedDays=new Set();
 const undoStack=[], redoStack=[];
+let plannerTitle='Planner';
+let easterState=null;
+
+function updatePlannerTitle(){if(plannerTitleEl) plannerTitleEl.textContent=plannerTitle;}
+if(plannerTitleEl){plannerTitleEl.addEventListener('click',()=>{const name=prompt('Planner name',plannerTitle);if(name!==null){plannerTitle=name.trim()||'Planner';updatePlannerTitle();}});}
 
 function monthKey(y,m){return y+'-'+m;}
 function isMonthLocked(y,m){return lockedMonths.has(monthKey(y,m));}
@@ -412,7 +424,7 @@ function applyDayVisual(i){const d=days[i],el=dayEls[i];if(!el)return;el.classLi
 function unpackDays(U){let i=0;let [start,i2]=vd(U,0);let [len,i3]=vd(U,i2);i=i3;const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date),j);let byteIdx=i,bit=0,cur=U[byteIdx]||0;const gb=()=>{const v=(cur>>bit)&1;bit++;if(bit===8){bit=0;byteIdx++;cur=U[byteIdx]||0}return v};for(let k=0;k<len;k++){const ep=start+k,di=map.get(ep);const hol=gb()?1:0;let arr=[0,0,0,0,0,0];for(let m=0;m<6;m++){let v=gb()|(gb()<<1)|(gb()<<2);arr[m]=v}if(di!=null){days[di].isHoliday=hol?true:false;days[di].grid=arr;applyDayVisual(di)}}}
 function packLetters(){const out=[];for(let i=0;i<days.length;i++){const L=days[i].letters;if(L.some(x=>x&&x.length)){out.push(...ve(i));for(let k=0;k<6;k++){const c=L[k]?L[k].charCodeAt(0)&255:0;out.push(c)}}}return new Uint8Array(out)}
 function unpackLetters(U,start){let i=0;const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date)-start,j);while(i<U.length){let off;[off,i]=vd(U,i);const di=map.get(off);for(let k=0;k<6;k++){const c=U[i++];if(di!=null){days[di].letters[k]=c?String.fromCharCode(c):'';const mini=dayEls[di].querySelectorAll('.mini')[k];applyMiniLetter(mini,days[di].letters[k])}}}}
-function exportState(){return new Promise(async(res,rej)=>{try{const daysB=packDays();const lettersB=packLetters();const start=epochDays(days[0].date);const barr=[...barriers].sort((a,b)=>a-b).map(p=>p-1);const terms=[...barrierBoxes.entries()].map(([pos,b])=>({o:pos-1,t:b.title||'',c:!!b.closed}));const notes=[...notesBoxes.entries()].map(([id,b])=>{const r=b.el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();return{t:b.title||'',b:b.el.querySelector('.note-content').textContent||'',x:Math.round(r.left-wr.left),y:Math.round(r.top-wr.top),w:Math.round(r.width),h:Math.round(r.height),c:!!b.closed}});const def=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));const lab={};for(const k in colorLabels){if(colorLabels[k]!==def[k])lab[k]=colorLabels[k]}const b64days=b64(daysB),b64letters=b64(lettersB),b64bars=btoa(JSON.stringify(barr)),b64terms=btoa(JSON.stringify(terms));let hdr='V1',b64notes;try{if('CompressionStream'in window&&notes.length){const json=JSON.stringify(notes);const cs=new CompressionStream('gzip');const stream=new Blob([json]).stream().pipeThrough(cs);const buf=await new Response(stream).arrayBuffer();b64notes=b64(new Uint8Array(buf));hdr='V1Z'}else{b64notes=btoa(JSON.stringify(notes))}}catch{b64notes=btoa(JSON.stringify(notes))}const out=[hdr,b64days,b64letters,b64bars,b64terms,b64notes,JSON.stringify(lab),JSON.stringify([...lockedMonths])].join('|');res(out)}catch(e){rej(e)}})}
+function exportState(){return new Promise(async(res,rej)=>{try{const daysB=packDays();const lettersB=packLetters();const start=epochDays(days[0].date);const barr=[...barriers].sort((a,b)=>a-b).map(p=>p-1);const terms=[...barrierBoxes.entries()].map(([pos,b])=>({o:pos-1,t:b.title||'',c:!!b.closed}));const notes=[...notesBoxes.entries()].map(([id,b])=>{const r=b.el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();return{t:b.title||'',b:b.el.querySelector('.note-content').textContent||'',x:Math.round(r.left-wr.left),y:Math.round(r.top-wr.top),w:Math.round(r.width),h:Math.round(r.height),c:!!b.closed}});const def=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));const lab={};for(const k in colorLabels){if(colorLabels[k]!==def[k])lab[k]=colorLabels[k]}const b64days=b64(daysB),b64letters=b64(lettersB),b64bars=btoa(JSON.stringify(barr)),b64terms=btoa(JSON.stringify(terms));let hdr='V1',b64notes;try{if('CompressionStream'in window&&notes.length){const json=JSON.stringify(notes);const cs=new CompressionStream('gzip');const stream=new Blob([json]).stream().pipeThrough(cs);const buf=await new Response(stream).arrayBuffer();b64notes=b64(new Uint8Array(buf));hdr='V1Z'}else{b64notes=btoa(JSON.stringify(notes))}}catch{b64notes=btoa(JSON.stringify(notes))}const out=[hdr,b64days,b64letters,b64bars,b64terms,b64notes,JSON.stringify(lab),JSON.stringify([...lockedMonths]),btoa(plannerTitle)].join('|');res(out)}catch(e){rej(e)}})}
 function clearAll(){
   exitMultiSelect();
   closeAllBoxes();
@@ -435,7 +447,33 @@ let notesArr=[];if(hdr==='V1Z'&&('DecompressionStream'in window)){const U=ub64(p
 for(const n of notesArr){const id=noteSeq++;const box=createNoteBox(id);notesBoxes.set(id,box);box.title=n.t||'';box.el.querySelector('.box-title').textContent=box.title;box.el.querySelector('.note-content').textContent=n.b||'';box.closed=true;box.el.style.display='none';if(n.w!=null){box.el.style.width=n.w+'px'}if(n.h!=null){box.el.style.height=n.h+'px'}}
 if(parts[6]){try{const labs=JSON.parse(parts[6]);for(const k in labs)colorLabels[k]=labs[k]}catch{}}
 if(parts[7]){try{const locked=JSON.parse(parts[7]);for(const key of locked){lockedMonths.add(key);const sec=monthSections.get(key);if(sec)sec.classList.add('locked');}}catch{}}
+if(parts[8]){try{plannerTitle=atob(parts[8]);}catch{plannerTitle='Planner';}}else{plannerTitle='Planner';}
+updatePlannerTitle();
 refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res()}catch(e){rej(e)}})}
+
+async function toggleEaster(){
+  if(easterState){await importState(easterState);easterState=null;document.body.classList.remove('smiley-mode');return;}
+  easterState=await exportState();
+  closeAllBoxes();
+  document.body.classList.add('smiley-mode');
+  document.querySelectorAll('.month').forEach(m=>m.classList.remove('locked'));
+  const yellowIdx=COLORS.findIndex(c=>c.key==='yellow');
+  const charcoalIdx=COLORS.findIndex(c=>c.key==='charcoal');
+  const monthMap=new Map();
+  days.forEach((d,i)=>{const key=d.year+'-'+d.monthIndex; if(!monthMap.has(key)) monthMap.set(key,[]); monthMap.get(key).push(i);});
+  monthMap.forEach(indices=>{
+    const first=days[indices[0]].weekDay;
+    indices.forEach(i=>{
+      const d=days[i]; d.isHoliday=false; d.grid=Array(6).fill(yellowIdx); d.letters=["","","","","",""];
+      const el=dayEls[i]; if(el){el.classList.remove('holiday'); el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,yellowIdx);applyMiniLetter(m,'');});}
+    });
+    function idxAt(r,c){const dayNum=r*7+c-first+1; if(dayNum<1||dayNum>indices.length) return null; return indices[dayNum-1];}
+    [1,5].forEach(c=>{const gi=idxAt(1,c); if(gi!=null){const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+    [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c); if(gi!=null){const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+  });
+}
+
+const signature=document.getElementById('signature');if(signature)signature.addEventListener('click',()=>{toggleEaster();});
 
 document.getElementById('notesLegend').addEventListener('click',e=>{
   const chip=e.target.closest('.note-chip');if(!chip)return;
@@ -452,7 +490,7 @@ document.addEventListener('mousedown',e=>{
 },true);
 
 // helper funcs needed by ESC and legends
-function closeAllBoxes(){for(const [,b] of barrierBoxes){if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true;} for(const [,n] of notesBoxes){n.el.style.display='none'; n.closed=true;}}
+function closeAllBoxes(){for(const [,b] of barrierBoxes){if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true;} for(const [,n] of notesBoxes){n.el.style.display='none'; n.closed=true;} if(ieEl)ieEl.style.display='none';}
 function dayInView(i){const el=dayEls[i];return el&&el.offsetParent!==null;}
 function anyMiniColoredOrTyped(onlyVisible=false){const blank=COLORS.findIndex(c=>c.key==='blank'); for(let idx=0;idx<days.length;idx++){if(onlyVisible&&!dayInView(idx))continue;const d=days[idx];if(isMonthLocked(d.year,d.monthIndex))continue;for(let i=0;i<6;i++){if(d.grid[i]!==blank) return true; if(d.letters[i]) return true;}} return false;}
 function resetMinisInRange(a,b,onlyVisible=false,skipRecord=false){if(!skipRecord)saveState();
@@ -476,9 +514,10 @@ function resetMinisInRange(a,b,onlyVisible=false,skipRecord=false){if(!skipRecor
 function removeAllBarriers(onlyVisible=false){saveState();clearFocus(); for(const pos of [...barriers]){if(onlyVisible&&!(dayInView(pos-1)||dayInView(pos)))continue;const left=days[pos-1],right=days[pos];if((left&&isMonthLocked(left.year,left.monthIndex))||(right&&isMonthLocked(right.year,right.monthIndex)))continue;barriers.delete(pos); updateDayBorders(pos); const bx=barrierBoxes.get(pos); if(bx){bx.el.remove(); barrierBoxes.delete(pos);} } refreshTermsLegend();}
 function barriersInView(){for(const pos of barriers){if(dayInView(pos-1)||dayInView(pos))return true;}return false;}
 
-function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;const phase=-(elapsed%GLIMMER_PERIOD);document.querySelectorAll('.day.holiday, .day.multi-selected, .global-bar.open .global-content').forEach(el=>{el.style.setProperty('--glimmer-phase',phase+'s');});const useAlt=glimmerFlip;document.querySelectorAll('.day.holiday, .day.multi-selected').forEach(el=>{el.classList.toggle('sync2',useAlt);});const gContent=document.querySelector('.global-bar.open .global-content');if(gContent)gContent.classList.toggle('sync2',useAlt);glimmerFlip=!glimmerFlip;}
+function syncAllGlimmers(){const elapsed=(performance.now()-glimmerBase)/1000;const phase=-(elapsed%GLIMMER_PERIOD);document.querySelectorAll('.day.holiday, .day.multi-selected, .global-bar.open .global-content').forEach(el=>{el.style.setProperty('--glimmer-phase',phase+'s');});const spinPhase=-(elapsed%SPIN_PERIOD);document.querySelectorAll('.mini.black-hole').forEach(el=>{el.style.setProperty('--spin-phase',spinPhase+'s');});const useAlt=glimmerFlip;document.querySelectorAll('.day.holiday, .day.multi-selected').forEach(el=>{el.classList.toggle('sync2',useAlt);});const gContent=document.querySelector('.global-bar.open .global-content');if(gContent)gContent.classList.toggle('sync2',useAlt);glimmerFlip=!glimmerFlip;}
 
 // init
+updatePlannerTitle();
 buildDays(); buildMonthShells(); renderDayCells(); buildGlobalWeek(); refreshTermsLegend(); refreshNotesLegend(); syncAllGlimmers();
 exportState().then(s=>undoStack.push(s));
 shownStartIdx=shownEndIdx=monthOrder.indexOf(INITIAL_KEY);
@@ -489,7 +528,7 @@ updateMonthButtons();
 updateMonthClosers();
 updateMonthRangeLabel();
 // handlers
-const termsLegend=document.getElementById('termsLegend'); if(termsLegend){termsLegend.addEventListener('click',e=>{const chip=e.target.closest('.term-chip'); if(!chip) return; const pos=+chip.dataset.pos; const b=barrierBoxes.get(pos); if(!b) return; if(e.shiftKey){toggleBarrier(pos);return;} if(b.el.style.display==='none'||b.closed){b.el.style.display=''; b.closed=false; positionBox(pos);} else { if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true; }});}
+const termsLegend=document.getElementById('termsLegend'); if(termsLegend){termsLegend.addEventListener('click',e=>{const chip=e.target.closest('.term-chip'); if(!chip) return; const pos=+chip.dataset.pos; const b=barrierBoxes.get(pos); if(!b) return; if(e.shiftKey){toggleBarrier(pos);return;} if(b.el.style.display==='none'||b.closed){if(dayInView(pos-1)||dayInView(pos))positionBox(pos);else placeAtOrigin(b.el);b.el.style.display=''; b.closed=false;} else { if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true; }});}
 const addNoteBtn=document.getElementById('addNoteBtn'); if(addNoteBtn){addNoteBtn.addEventListener('click',()=>{const id=noteSeq++; const box=createNoteBox(id); notesBoxes.set(id,box); refreshNotesLegend();});}
 const themeToggle=document.getElementById('themeToggle'); if(themeToggle){themeToggle.addEventListener('click',()=>{document.documentElement.classList.toggle('light'); syncAllGlimmers();});}
 const ieToggle=document.getElementById('ieToggle'); if(ieToggle){ieToggle.addEventListener('click',()=>{if(ieEl){if(ieEl.style.display==='none'){placeAtOrigin(ieEl);ieEl.style.display='';}else{ieEl.style.display='none';}} else createIE();});}
@@ -506,7 +545,7 @@ window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='t'&&!e.re
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='t')tHeld=false});
 window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='l'&&!e.repeat&&!isEditingTarget(e.target))lHeld=true});
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='l')lHeld=false});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return;if(selectedDays.size){resetSelectedDays();return;} if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); if(anyOpenTerms||anyOpenNotes){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return;if(selectedDays.size){resetSelectedDays();return;} if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); const ieOpen=ieEl&&ieEl.style.display!=='none'; if(anyOpenTerms||anyOpenNotes||ieOpen){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!ieOpen&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
 window.addEventListener('keydown',e=>{if(isEditingTarget(e.target))return;if(e.key===','){e.preventDefault();undo();}else if(e.key==='.'){e.preventDefault();redo();}});
 
 // keep boxes positioned
