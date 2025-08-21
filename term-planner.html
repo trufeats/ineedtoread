@@ -205,6 +205,7 @@ const INITIAL_KEY='2026-0';
 const COLORS=[{key:'charcoal',name:'Charcoal',css:'charcoal'},{key:'red',name:'Red',css:'red'},{key:'orange',name:'Orange',css:'orange'},{key:'yellow',name:'Yellow',css:'yellow'},{key:'green',name:'Green',css:'green'},{key:'blue',name:'Blue',css:'blue'},{key:'purple',name:'Purple',css:'purple'},{key:'blank',name:'Blank',css:'blank'}];
 const colorLabels=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));
 const blankIndex=COLORS.findIndex(c=>c.key==='blank');
+const charcoalIdx=COLORS.findIndex(c=>c.key==='charcoal');
 const GLOBAL_COLORS=[...COLORS,{key:'blackhole',name:'Black Hole',css:'black-hole'}];
 const blackHoleIndex=GLOBAL_COLORS.length-1;
 const globalTemplate=Array.from({length:7},()=>Array(6).fill(blankIndex));
@@ -220,7 +221,7 @@ const GLIMMER_PERIOD=3.2,SPIN_PERIOD=3,glimmerBase=performance.now(); let glimme
 const selectedDays=new Set();
 const undoStack=[], redoStack=[];
 let plannerTitle='Planner';
-let easterState=null, angryMonths=new Set(), easterMonthMap=null;
+let easterState=null, angryMonths=new Set(), easterMonthMap=null, easterCharDays=new Set();
 
 function updatePlannerTitle(){if(plannerTitleEl) plannerTitleEl.textContent=plannerTitle;}
 if(plannerTitleEl){plannerTitleEl.addEventListener('click',()=>{const name=prompt('Planner name',plannerTitle);if(name!==null){plannerTitle=name.trim()||'Planner';updatePlannerTitle();}});}
@@ -291,7 +292,7 @@ function renderDayCells(){
 <div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class=\"mini blank\" data-mini=\"${i}\"><span class=\"mini-char\"></span></div>`).join('')}</div>
 <div class="barrier-handle left" data-edge="left" title="Toggle barrier (left)"></div>
 <div class="barrier-handle right" data-edge="right" title="Toggle barrier (right)"></div>`;
-      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } saveState(); const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=next;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,next);}} recalcAllBoxes(); if(easterState&&cur===charcoalIdx&&next===blankIndex){triggerAnger(d.year,d.monthIndex);} });
+      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } saveState(); const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=next;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,next);if(easterState&&easterCharDays.has(idx)&&next===blankIndex)triggerAnger(od.year,od.monthIndex);}} recalcAllBoxes(); if(easterState&&easterCharDays.has(di)&&next===blankIndex){triggerAnger(d.year,d.monthIndex);} });
       day.querySelectorAll('.barrier-handle').forEach(h=>h.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; ev.stopPropagation(); const edge=h.dataset.edge, idx=+day.dataset.index, pos=(edge==='left')?idx:(idx+1); if(ev.shiftKey){showBarrierBox(pos);return;} toggleBarrier(pos);}));
       day.querySelector('.day-number').addEventListener('click',()=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; openBoxForDay(+day.dataset.index);});
       day.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; const idx=+day.dataset.index; if(ev.shiftKey){toggleMultiSelect(idx);return;} if(selectedDays.size){toggleHolidayMulti(idx);return;} toggleHoliday(idx); });
@@ -310,7 +311,7 @@ function globalTemplateEmpty(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){if(g
 function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){globalTemplate[wd][i]=blankIndex;globalLetters[wd][i]='';}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyGlobalMiniColor(m,blankIndex);applyMiniLetter(m,'');});}
 function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}const cur=globalTemplate[wd][i];const next=ev.shiftKey?((cur-1+GLOBAL_COLORS.length)%GLOBAL_COLORS.length):((cur+1)%GLOBAL_COLORS.length);globalTemplate[wd][i]=next;applyGlobalMiniColor(mini,next);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyGlobalMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);});container.appendChild(day);}}
 function startGlobalMiniEdit(wd,idx,el){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');globalLetters[wd][idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,globalLetters[wd][idx]);s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
-function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<6;j++){const color=globalTemplate[wd][j];if(color===blankIndex)continue;const el=dayEls[i].querySelectorAll('.mini')[j];if(color===blackHoleIndex){d.grid[j]=blankIndex;d.letters[j]='';applyMiniColor(el,blankIndex);applyMiniLetter(el,'');}else{d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}}}recalcAllBoxes();}
+function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<6;j++){const color=globalTemplate[wd][j];if(color===blankIndex)continue;const el=dayEls[i].querySelectorAll('.mini')[j];if(color===blackHoleIndex){d.grid[j]=blankIndex;d.letters[j]='';applyMiniColor(el,blankIndex);applyMiniLetter(el,'');}else{d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}if(easterState&&easterCharDays.has(i)&&d.grid[j]===blankIndex){triggerAnger(d.year,d.monthIndex);}}}recalcAllBoxes();}
 function applyMiniColor(el,idx){el.className='mini '+COLORS[idx].css}
 function applyGlobalMiniColor(el,idx){el.className='mini '+GLOBAL_COLORS[idx].css}
 function applyMiniLetter(el,t){const s=el.querySelector('.mini-char');if(s)s.textContent=(t||'').slice(0,1)}
@@ -455,15 +456,15 @@ updatePlannerTitle();
 refreshTermsLegend();refreshNotesLegend();recalcAllBoxes();for(const [pos] of barrierBoxes)positionBox(pos);syncAllGlimmers();res()}catch(e){rej(e)}})}
 
 async function toggleEaster(){
-  if(easterState){await importState(easterState);easterState=null;document.body.classList.remove('smiley-mode');angryMonths.clear();easterMonthMap=null;return;}
+  if(easterState){await importState(easterState);easterState=null;document.body.classList.remove('smiley-mode');angryMonths.clear();easterMonthMap=null;easterCharDays.clear();return;}
   easterState=await exportState();
   angryMonths.clear();
   closeAllBoxes();
   document.body.classList.add('smiley-mode');
   document.querySelectorAll('.month').forEach(m=>m.classList.remove('locked'));
   const yellowIdx=COLORS.findIndex(c=>c.key==='yellow');
-  const charcoalIdx=COLORS.findIndex(c=>c.key==='charcoal');
   const monthMap=new Map();
+  easterCharDays=new Set();
   days.forEach((d,i)=>{const key=d.year+'-'+d.monthIndex; if(!monthMap.has(key)) monthMap.set(key,[]); monthMap.get(key).push(i);});
   monthMap.forEach(indices=>{
     const first=days[indices[0]].weekDay;
@@ -472,8 +473,8 @@ async function toggleEaster(){
       const el=dayEls[i]; if(el){el.classList.remove('holiday'); el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,yellowIdx);applyMiniLetter(m,'');});}
     });
     function idxAt(r,c){const dayNum=r*7+c-first+1; if(dayNum<1||dayNum>indices.length) return null; return indices[dayNum-1];}
-    [1,5].forEach(c=>{const gi=idxAt(1,c); if(gi!=null){const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
-    [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c); if(gi!=null){const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+    [1,5].forEach(c=>{const gi=idxAt(1,c); if(gi!=null){easterCharDays.add(gi); const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+    [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c); if(gi!=null){easterCharDays.add(gi); const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
   });
   easterMonthMap=monthMap;
 }
