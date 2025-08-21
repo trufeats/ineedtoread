@@ -170,6 +170,7 @@ function createDayCard(date, skipDefault=false){
   delBtn.textContent='x';
   delBtn.style.float='right';
   delBtn.addEventListener('click', (e)=>{
+    e.preventDefault();
     e.stopPropagation();
     details.remove();
     delete dayCards[date];
@@ -183,6 +184,7 @@ function createDayCard(date, skipDefault=false){
   copyBtn.textContent='copy';
   copyBtn.style.background='orange';
   copyBtn.addEventListener('click',(e)=>{
+    e.preventDefault();
     e.stopPropagation();
     if(!copyModeSource){enterCopyMode(date);}else if(copyModeSource===date){exitCopyMode();}else{pasteDay(copyModeSource,date);}
   });
@@ -190,6 +192,7 @@ function createDayCard(date, skipDefault=false){
   prevBtn.type='button';
   prevBtn.textContent='-1d';
   prevBtn.addEventListener('click',(e)=>{
+    e.preventDefault();
     e.stopPropagation();
     const newDate=new Date(date);
     newDate.setDate(newDate.getDate()-1);
@@ -200,6 +203,7 @@ function createDayCard(date, skipDefault=false){
   nextBtn.type='button';
   nextBtn.textContent='+1d';
   nextBtn.addEventListener('click',(e)=>{
+    e.preventDefault();
     e.stopPropagation();
     const newDate=new Date(date);
     newDate.setDate(newDate.getDate()+1);
