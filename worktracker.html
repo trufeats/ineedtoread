@@ -25,7 +25,11 @@ details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
 </style>
 </head>
 <body>
-<h1>Hourly Task Tracker</h1>
+<div id="io-controls" style="text-align:center;">
+  <button id="import-btn">Import</button>
+  <button id="export-btn">Export</button>
+</div>
+<h1 id="project-title" style="text-align:center;">Hourly Task Tracker</h1>
 
 <details id="task-section" open>
 <summary>Task Setup</summary>
@@ -73,8 +77,25 @@ const toggleAvgBtn = document.getElementById('toggle-avg');
 const analyticsTable = document.getElementById('analytics-table');
 const useActualChk = document.getElementById('use-actual');
 const baseSalaryInput = document.getElementById('base-salary');
+const titleElem = document.getElementById('project-title');
+const importBtn = document.getElementById('import-btn');
+const exportBtn = document.getElementById('export-btn');
+let undoStack=[], redoStack=[], lastStateStr='';
+let copyModeSource=null;
+let dragSrcRow=null;
 
-function addTaskRow(data={}) {
+function handleDragStart(){dragSrcRow=this;}
+function handleDragOver(e){e.preventDefault();}
+function handleDrop(e){e.preventDefault();if(dragSrcRow && dragSrcRow!==this){const rows=[...taskTableBody.children];const src=rows.indexOf(dragSrcRow);const dst=rows.indexOf(this);if(src<dst)this.after(dragSrcRow);else this.before(dragSrcRow);updateAnalytics();}}
+
+function enterCopyMode(src){copyModeSource=src;Object.entries(dayCards).forEach(([d,obj])=>{obj.copyBtn.style.background=d===src?'orange':'lightgreen';});document.addEventListener('keydown',escHandler);}
+function exitCopyMode(){Object.values(dayCards).forEach(obj=>{obj.copyBtn.style.background='orange';});copyModeSource=null;document.removeEventListener('keydown',escHandler);}
+function escHandler(e){if(e.key==='Escape'&&copyModeSource)exitCopyMode();}
+function pasteDay(src,dst){const rows=[];dayCards[src].element.querySelectorAll('tbody tr').forEach(r=>{rows.push({code:r.querySelector('.code').value,amt:r.querySelector('.amt').value});});const body=dayCards[dst].element.querySelector('tbody');body.innerHTML='';rows.forEach(data=>dayCards[dst].addEntryRow(data,true));dayCards[dst].getTotals();updateAnalytics();}
+
+function updateDayDeleteButtons(){const dates=Object.keys(dayCards).sort();dates.forEach((d,i)=>{const show=i===0||i===dates.length-1;dayCards[d].delBtn.style.display=show?'':'none';});}
+
+function addTaskRow(data={}, skipUpdate=false) {
   const tr = document.createElement('tr');
   tr.innerHTML = `<td><input value="${data.task||''}"></td>
     <td><input value="${data.code||''}"></td>
@@ -84,9 +105,18 @@ function addTaskRow(data={}) {
         <option value="within"${data.type==='within'?' selected':''}>within base</option>
         <option value="out"${data.type==='out'?' selected':''}>out-of-base</option>
       </select></td>
-    <td><button class="del">x</button></td>`;
-  tr.querySelector('.del').addEventListener('click', ()=>tr.remove());
+    <td><button class="drag">↕</button><button class="del">x</button></td>`;
+  const delBtn=tr.querySelector('.del');
+  delBtn.addEventListener('click', ()=>{tr.remove();updateAnalytics();});
+  const dragBtn=tr.querySelector('.drag');
+  dragBtn.addEventListener('mousedown',()=>{tr.draggable=true;});
+  tr.addEventListener('dragstart',handleDragStart);
+  tr.addEventListener('dragover',handleDragOver);
+  tr.addEventListener('drop',handleDrop);
+  tr.addEventListener('dragend',()=>{tr.draggable=false;});
+  tr.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>updateAnalytics()));
   taskTableBody.appendChild(tr);
+  if(!skipUpdate) updateAnalytics();
 }
 
 addTaskRow(); // initial row
@@ -129,7 +159,7 @@ addDayBtn.addEventListener('click',()=>{
   updateAnalytics();
 });
 
-function createDayCard(date){
+function createDayCard(date, skipDefault=false){
   const details=document.createElement('details');
   details.open=true;
   details.className='day-card';
@@ -143,14 +173,21 @@ function createDayCard(date){
     delete dayCards[date];
     if(Object.keys(dayCards).length===0) datePicker.classList.remove('hidden');
     updateAnalytics();
+    updateDayDeleteButtons();
+    if(copyModeSource===date) exitCopyMode();
   });
+  const copyBtn=document.createElement('button');
+  copyBtn.textContent='copy';
+  copyBtn.style.background='orange';
+  copyBtn.addEventListener('click',()=>{
+    if(!copyModeSource){enterCopyMode(date);}else if(copyModeSource===date){exitCopyMode();}else{pasteDay(copyModeSource,date);} });
   const prevBtn=document.createElement('button');
   prevBtn.textContent='-1d';
   prevBtn.addEventListener('click',()=>{
     const newDate=new Date(date);
     newDate.setDate(newDate.getDate()-1);
     const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
-    if(!dayCards[n]) createDayCard(n);
+    if(!dayCards[n]){createDayCard(n); updateAnalytics();}
   });
   const nextBtn=document.createElement('button');
   nextBtn.textContent='+1d';
@@ -158,10 +195,11 @@ function createDayCard(date){
     const newDate=new Date(date);
     newDate.setDate(newDate.getDate()+1);
     const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
-    if(!dayCards[n]) createDayCard(n);
+    if(!dayCards[n]){createDayCard(n); updateAnalytics();}
   });
   summary.appendChild(prevBtn);
   summary.appendChild(nextBtn);
+  summary.appendChild(copyBtn);
   summary.appendChild(delBtn);
   details.appendChild(summary);
 
@@ -177,7 +215,7 @@ function createDayCard(date){
   totals.textContent='Total Time: 0 | Total $: 0';
   details.appendChild(totals);
 
-  function addEntryRow(data={}){
+  function addEntryRow(data={}, skip=false){
     const tr=document.createElement('tr');
     tr.innerHTML=`<td><input class="code" value="${data.code||''}"></td>
       <td class="task"></td>
@@ -209,22 +247,24 @@ function createDayCard(date){
     amtInput.addEventListener('input',recalc);
     tr.querySelector('.del').addEventListener('click',()=>{tr.remove();updateTotals();});
     tBody.appendChild(tr);
+    if(!skip) updateTotals();
   }
 
-  function updateTotals(){
+  function updateTotals(skip=false){
     let t=0,p=0;
     tBody.querySelectorAll('tr').forEach(r=>{
       t+=parseFloat(r.querySelector('.time').textContent)||0;
       p+=parseFloat(r.querySelector('.pay').textContent)||0;
     });
     totals.textContent=`Total Time: ${t.toFixed(2)} | Total $: ${p.toFixed(2)}`;
-    updateAnalytics();
+    updateAnalytics(skip);
   }
 
-  addEntryRow();
+  if(!skipDefault) addEntryRow();
   addRowBtn.addEventListener('click',()=>addEntryRow());
-  dayCards[date]={element:details, getTotals:updateTotals};
+  dayCards[date]={element:details, getTotals:updateTotals, addEntryRow:addEntryRow, delBtn, copyBtn};
   dayCardsContainer.appendChild(details);
+  updateDayDeleteButtons();
 }
 
 function gatherAllData(){
@@ -247,7 +287,7 @@ function gatherAllData(){
   return data;
 }
 
-function updateAnalytics(){
+function updateAnalytics(skipSave=false){
   const tbody=document.querySelector('#analytics-table tbody');
   const tfoot=document.querySelector('#analytics-table tfoot');
   tbody.innerHTML='';
@@ -279,6 +319,7 @@ function updateAnalytics(){
   tr.innerHTML+=`<td class="avg">${daily}</td><td class="avg">${weekly}</td><td class="avg">${monthly}</td><td class="avg">${yearly}</td>`;
   tfoot.appendChild(tr);
   updateSalary(withinActual,outActual,withinMonthly,outMonthly);
+  if(!skipSave) saveState();
 }
 
 function updateSalary(withinActual,outActual,withinMonthly,outMonthly){
@@ -292,12 +333,51 @@ function updateSalary(withinActual,outActual,withinMonthly,outMonthly){
   document.getElementById('total-salary').textContent=salary.toFixed(2);
 }
 
+function getState(){
+  const tasks=[];
+  taskTableBody.querySelectorAll('tr').forEach(r=>{
+    tasks.push({s:r.querySelector('td:nth-child(1) input').value,k:r.querySelector('td:nth-child(2) input').value,r:parseFloat(r.querySelector('td:nth-child(3) input').value)||0,m:parseFloat(r.querySelector('td:nth-child(4) input').value)||0,y:r.querySelector('td:nth-child(5) select').value==='out'?'o':'w'});
+  });
+  const days=[];
+  Object.entries(dayCards).forEach(([d,card])=>{
+    const entries=[];
+    card.element.querySelectorAll('tbody tr').forEach(r=>{entries.push({c:r.querySelector('.code').value,a:parseFloat(r.querySelector('.amt').value)||0});});
+    days.push({d, e:entries});
+  });
+  return {n:titleElem.textContent,b:parseFloat(baseSalaryInput.value)||0,t:tasks,d:days};
+}
+
+function loadState(state){
+  titleElem.textContent=state.n||'Hourly Task Tracker';
+  baseSalaryInput.value=state.b||'';
+  taskTableBody.innerHTML='';
+  (state.t||[]).forEach(t=>addTaskRow({task:t.s,code:t.k,pay:t.r,time:t.m,type:t.y==='o'?'out':'within'},true));
+  if(!state.t||state.t.length===0) addTaskRow({},true);
+  dayCardsContainer.innerHTML='';
+  dayCards={};
+  (state.d||[]).forEach(day=>{createDayCard(day.d,true);day.e.forEach(e=>dayCards[day.d].addEntryRow({code:e.c,amt:e.a},true));dayCards[day.d].getTotals(true);});
+  if(Object.keys(dayCards).length===0) datePicker.classList.remove('hidden'); else datePicker.classList.add('hidden');
+  updateDayDeleteButtons();
+  updateAnalytics(true);
+}
+
+function saveState(){const s=JSON.stringify(getState());if(s!==lastStateStr){undoStack.push(s);lastStateStr=s;redoStack=[];}}
+
+function loadStateFromStr(str){const obj=JSON.parse(str);loadState(obj);lastStateStr=str;}
+
 toggleAvgBtn.addEventListener('click',()=>{
   analyticsTable.classList.toggle('hide-avg');
   toggleAvgBtn.textContent=analyticsTable.classList.contains('hide-avg')?'Show Averages':'Hide Averages';
 });
 useActualChk.addEventListener('change',updateAnalytics);
 baseSalaryInput.addEventListener('input',updateAnalytics);
+
+importBtn.addEventListener('click',()=>{const str=prompt('Paste data');if(!str)return;try{const obj=JSON.parse(str);loadState(obj);undoStack=[JSON.stringify(getState())];redoStack=[];lastStateStr=undoStack[0];}catch(e){alert('Invalid data');}});
+exportBtn.addEventListener('click',()=>{const include=confirm('Export section 2 data?');const name=prompt('Project name?',titleElem.textContent);if(name) titleElem.textContent=name;const state=getState();state.n=titleElem.textContent;if(!include) delete state.d;const str=JSON.stringify(state);prompt('Copy data',str);});
+
+document.addEventListener('keydown',e=>{if(e.key===','&&!e.target.closest('input,textarea,select')){if(undoStack.length>1){redoStack.push(undoStack.pop());loadStateFromStr(undoStack[undoStack.length-1]);}}else if(e.key==='.'&&!e.target.closest('input,textarea,select')){if(redoStack.length){const s=redoStack.pop();undoStack.push(s);loadStateFromStr(s);}}});
+
+saveState();
 
 })();
 </script>
