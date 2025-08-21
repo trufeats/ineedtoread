@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hourly Task Tracker</title>
+<style>
+body {font-family: sans-serif; margin:20px;}
+section {margin-bottom:30px;}
+table {border-collapse: collapse; width:100%;}
+th, td {border:1px solid #ccc; padding:4px;}
+button {margin:2px;}
+.day-card {border:1px solid #666; padding:5px; margin-top:10px;}
+.hidden {display:none;}
+.total-line {margin-top:10px; font-weight:bold;}
+.analytics-table td, .analytics-table th {border:1px solid #ccc; padding:4px;}
+</style>
+</head>
+<body>
+<h1>Hourly Task Tracker</h1>
+
+<details id="task-section" open>
+<summary>Task Setup</summary>
+<table id="task-table">
+<thead><tr><th>task</th><th>code</th><th>$</th><th>time</th><th>type</th><th></th></tr></thead>
+<tbody></tbody>
+</table>
+<button id="add-task-row">Add Task</button>
+</details>
+
+<section id="work-section">
+<div id="date-picker">
+<select id="day-select"></select>
+<select id="month-select"></select>
+<select id="year-select"></select>
+<button id="add-day">Add</button>
+</div>
+<div id="day-cards"></div>
+</section>
+
+<section id="analytics">
+<h2>Analytics</h2>
+<div id="analytics-info"></div>
+<table class="analytics-table" id="analytics-table">
+<thead><tr><th>Code</th><th>Task</th><th>Total $</th><th>Total Time</th><th>Daily Avg $</th><th>Weekly Avg $</th><th>Monthly Avg $</th><th>Yearly Avg $</th></tr></thead>
+<tbody></tbody>
+<tfoot></tfoot>
+</table>
+</section>
+
+<script>
+(function(){
+const taskTableBody = document.querySelector('#task-table tbody');
+const addTaskRowBtn = document.getElementById('add-task-row');
+const taskSection = document.getElementById('task-section');
+
+function addTaskRow(data={}) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input value="${data.task||''}"></td>
+    <td><input value="${data.code||''}"></td>
+    <td><input type="number" value="${data.pay||''}" style="width:70px;"></td>
+    <td><input type="number" value="${data.time||''}" style="width:70px;"></td>
+    <td><input value="${data.type||''}"></td>
+    <td><button class="del">x</button></td>`;
+  tr.querySelector('.del').addEventListener('click', ()=>tr.remove());
+  taskTableBody.appendChild(tr);
+}
+
+addTaskRow(); // initial row
+addTaskRowBtn.addEventListener('click', ()=>addTaskRow());
+
+function collectTasks(){
+  const tasks={};
+  taskTableBody.querySelectorAll('tr').forEach(row=>{
+    const cells=row.querySelectorAll('input');
+    const task=cells[0].value.trim();
+    const code=cells[1].value.trim();
+    const pay=parseFloat(cells[2].value)||0;
+    const time=parseFloat(cells[3].value)||0;
+    const type=cells[4].value.trim();
+    if(code) tasks[code]={task, pay, time, type};
+  });
+  return tasks;
+}
+
+// date selectors
+const daySel=document.getElementById('day-select');
+for(let i=1;i<=31;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=i;daySel.appendChild(opt);}
+const monthSel=document.getElementById('month-select');
+for(let i=1;i<=12;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=i;monthSel.appendChild(opt);}
+const yearSel=document.getElementById('year-select');
+const curYear=new Date().getFullYear();
+for(let i=curYear-1;i<=curYear+1;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=i;yearSel.appendChild(opt);}
+
+const datePicker=document.getElementById('date-picker');
+const dayCardsContainer=document.getElementById('day-cards');
+const addDayBtn=document.getElementById('add-day');
+let dayCards={};
+
+function formatDate(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+
+addDayBtn.addEventListener('click',()=>{
+  const date=formatDate(yearSel.value, monthSel.value, daySel.value);
+  if(dayCards[date]) return; // already open
+  createDayCard(date);
+  datePicker.classList.add('hidden');
+  updateAnalytics();
+});
+
+function createDayCard(date){
+  const details=document.createElement('details');
+  details.open=true;
+  details.className='day-card';
+  const summary=document.createElement('summary');
+  summary.innerHTML=`<span>${date}</span>`;
+  const delBtn=document.createElement('button');
+  delBtn.textContent='x';
+  delBtn.style.float='right';
+  delBtn.addEventListener('click', ()=>{
+    details.remove();
+    delete dayCards[date];
+    if(Object.keys(dayCards).length===0) datePicker.classList.remove('hidden');
+    updateAnalytics();
+  });
+  const prevBtn=document.createElement('button');
+  prevBtn.textContent='-1d';
+  prevBtn.addEventListener('click',()=>{
+    const newDate=new Date(date);
+    newDate.setDate(newDate.getDate()-1);
+    const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
+    if(!dayCards[n]) createDayCard(n);
+  });
+  const nextBtn=document.createElement('button');
+  nextBtn.textContent='+1d';
+  nextBtn.addEventListener('click',()=>{
+    const newDate=new Date(date);
+    newDate.setDate(newDate.getDate()+1);
+    const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
+    if(!dayCards[n]) createDayCard(n);
+  });
+  summary.appendChild(prevBtn);
+  summary.appendChild(nextBtn);
+  summary.appendChild(delBtn);
+  details.appendChild(summary);
+
+  const table=document.createElement('table');
+  table.innerHTML='<thead><tr><th>code</th><th>task</th><th>amt</th><th>time</th><th>$</th><th></th></tr></thead><tbody></tbody>';
+  const tBody=table.querySelector('tbody');
+  details.appendChild(table);
+  const addRowBtn=document.createElement('button');
+  addRowBtn.textContent='Add Row';
+  details.appendChild(addRowBtn);
+  const totals=document.createElement('div');
+  totals.className='total-line';
+  totals.textContent='Total Time: 0 | Total $: 0';
+  details.appendChild(totals);
+
+  function addEntryRow(data={}){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><input class="code" value="${data.code||''}"></td>
+      <td class="task"></td>
+      <td><input type="number" class="amt" value="${data.amt||0}" style="width:60px;"></td>
+      <td class="time">0</td>
+      <td class="pay">0</td>
+      <td><button class="del">x</button></td>`;
+    const codeInput=tr.querySelector('.code');
+    const amtInput=tr.querySelector('.amt');
+
+    function recalc(){
+      const tasks=collectTasks();
+      const code=codeInput.value.trim();
+      const taskData=tasks[code];
+      const amt=parseFloat(amtInput.value)||0;
+      if(taskData){
+        tr.querySelector('.task').textContent=taskData.task;
+        tr.querySelector('.time').textContent=(taskData.time*amt).toFixed(2);
+        tr.querySelector('.pay').textContent=(taskData.pay*amt).toFixed(2);
+      }else{
+        tr.querySelector('.task').textContent='';
+        tr.querySelector('.time').textContent='0';
+        tr.querySelector('.pay').textContent='0';
+      }
+      updateTotals();
+    }
+    codeInput.addEventListener('change',recalc);
+    amtInput.addEventListener('input',recalc);
+    tr.querySelector('.del').addEventListener('click',()=>{tr.remove();updateTotals();});
+    tBody.appendChild(tr);
+  }
+
+  function updateTotals(){
+    let t=0,p=0;
+    tBody.querySelectorAll('tr').forEach(r=>{
+      t+=parseFloat(r.querySelector('.time').textContent)||0;
+      p+=parseFloat(r.querySelector('.pay').textContent)||0;
+    });
+    totals.textContent=`Total Time: ${t.toFixed(2)} | Total $: ${p.toFixed(2)}`;
+    updateAnalytics();
+  }
+
+  addEntryRow();
+  addRowBtn.addEventListener('click',()=>addEntryRow());
+  dayCards[date]={element:details, getTotals:updateTotals};
+  dayCardsContainer.appendChild(details);
+}
+
+function gatherAllData(){
+  const data={}; // code -> {task, pay, time}
+  Object.values(dayCards).forEach(card=>{
+    card.element.querySelectorAll('tbody tr').forEach(r=>{
+      const code=r.querySelector('.code').value.trim();
+      const tasks=collectTasks();
+      const def=tasks[code];
+      const amt=parseFloat(r.querySelector('.amt').value)||0;
+      if(code && def){
+        const time=def.time*amt;
+        const pay=def.pay*amt;
+        if(!data[code]) data[code]={task:def.task,time:0,pay:0};
+        data[code].time+=time;
+        data[code].pay+=pay;
+      }
+    });
+  });
+  return data;
+}
+
+function updateAnalytics(){
+  const tbody=document.querySelector('#analytics-table tbody');
+  const tfoot=document.querySelector('#analytics-table tfoot');
+  tbody.innerHTML='';
+  tfoot.innerHTML='';
+  const data=gatherAllData();
+  const daysCount=Object.keys(dayCards).length;
+  document.getElementById('analytics-info').textContent=`Days tracked: ${daysCount}`;
+  let totalPay=0,totalTime=0;
+  Object.entries(data).forEach(([code, info])=>{
+    totalPay+=info.pay; totalTime+=info.time;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${code}</td><td>${info.task}</td><td>${info.pay.toFixed(2)}</td><td>${info.time.toFixed(2)}</td>`;
+    const daily=(daysCount?info.pay/daysCount:0).toFixed(2);
+    const weekly=(daysCount?info.pay/(daysCount/7):0).toFixed(2);
+    const monthly=(daysCount?info.pay/(daysCount/30):0).toFixed(2);
+    const yearly=(daysCount?info.pay/(daysCount/365):0).toFixed(2);
+    tr.innerHTML+=`<td>${daily}</td><td>${weekly}</td><td>${monthly}</td><td>${yearly}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td>ALL</td><td>-</td><td>${totalPay.toFixed(2)}</td><td>${totalTime.toFixed(2)}</td>`;
+  const daily=(daysCount?totalPay/daysCount:0).toFixed(2);
+  const weekly=(daysCount?totalPay/(daysCount/7):0).toFixed(2);
+  const monthly=(daysCount?totalPay/(daysCount/30):0).toFixed(2);
+  const yearly=(daysCount?totalPay/(daysCount/365):0).toFixed(2);
+  tr.innerHTML+=`<td>${daily}</td><td>${weekly}</td><td>${monthly}</td><td>${yearly}</td>`;
+  tfoot.appendChild(tr);
+}
+
+})();
+</script>
+</body>
+</html>
