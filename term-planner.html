@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Term Planner v3</title>
+<title>Term Planner</title>
 <style>
 :root{--ink:#e8ecef;--muted:#9aa4ad;--panel:#1a1d21;--panel-2:#20242a;--border:#6b7280;--barrier:#fff;--c-charcoal:#2f3136;--c-red:#e53935;--c-orange:#fb8c00;--c-yellow:#f6d743;--c-green:#43a047;--c-blue:#1e88e5;--c-purple:#8e24aa;--bg-light:#f5f7fb;--ink-light:#0e1116;--panel-light:#ffffff;--panel-2-light:#eef2f7;--border-light:#cfd6e0}
 .light{--barrier:#000}
@@ -24,12 +24,15 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .btn{appearance:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:var(--ink);padding:6px 10px;border-radius:10px;cursor:pointer}
 .btn:hover{background:rgba(255,255,255,.09)}
 
-.global-bar{max-width:700px;margin:0 auto 12px;padding:8px;display:none;border-radius:12px;overflow:hidden;}
-.global-bar.open{display:block;animation:rainbow 8s linear infinite;background:linear-gradient(90deg,#e53935,#fb8c00,#f6d743,#43a047,#1e88e5,#8e24aa,#e53935);background-size:400% 400%;position:relative;}
-.global-bar.open::after{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.25) 50%,transparent 65%);transform:translateX(-150%);animation:glimmer 3.2s linear infinite;animation-delay:var(--glimmer-phase,0s);}
-.global-bar.open > .weekday-row,.global-bar.open > .days{background:var(--panel);border-radius:8px;}
-.light .global-bar.open > .weekday-row,.light .global-bar.open > .days{background:var(--panel-light);}
-.global-header{display:flex;justify-content:flex-end;margin-bottom:4px}
+.global-bar{max-width:700px;margin:0 auto 12px;padding:8px;display:none;border-radius:12px;}
+.global-bar.open{display:block;}
+.global-bar.open .global-body{animation:rainbow 8s linear infinite;background:linear-gradient(90deg,#e53935,#fb8c00,#f6d743,#43a047,#1e88e5,#8e24aa,#e53935);background-size:400% 400%;position:relative;border-radius:8px;overflow:hidden;}
+.global-bar.open .global-body::after{content:"";position:absolute;inset:0;border-radius:8px;pointer-events:none;background:linear-gradient(120deg,transparent 35%,rgba(255,255,255,.25) 50%,transparent 65%);transform:translateX(-150%);animation:glimmer 3.2s linear infinite;animation-delay:var(--glimmer-phase,0s);}
+.global-bar.open .weekday-row,.global-bar.open .days{background:var(--panel);border-radius:8px;}
+.light .global-bar.open .weekday-row,.light .global-bar.open .days{background:var(--panel-light);}
+.global-header{display:flex;justify-content:flex-end;margin-bottom:4px;position:relative;z-index:1}
+#globalApply{background:var(--panel-2);color:var(--ink);}
+.light #globalApply{background:var(--panel-2-light);color:var(--ink-light);}
 .global-day{min-height:150px;}
 .global-day .mini-grid{inset:8px;}
 @keyframes rainbow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
@@ -62,6 +65,10 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .mini{position:relative;border:1px solid rgba(255,255,255,.12);border-radius:6px;background:transparent;cursor:pointer;transition:box-shadow .15s ease,transform .05s ease}
 .mini:active{transform:scale(.98)}
 .mini.charcoal{background:var(--c-charcoal)}.mini.red{background:var(--c-red)}.mini.orange{background:var(--c-orange)}.mini.yellow{background:var(--c-yellow)}.mini.green{background:var(--c-green)}.mini.blue{background:var(--c-blue)}.mini.purple{background:var(--c-purple)}.mini.blank{background:transparent}
+.mini.black-hole{position:relative;overflow:hidden;background:#000;}
+.mini.black-hole::before{content:"";position:absolute;inset:-50%;background:conic-gradient(#8e24aa,#000,#8e24aa,#000,#8e24aa);animation:spin 3s linear infinite;}
+.mini.black-hole::after{content:"";position:absolute;inset:3px;background:#000;border-radius:50%;}
+@keyframes spin{to{transform:rotate(360deg);}}
 .mini-char{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;user-select:text;pointer-events:none}
 /* ensure legible mini text in light mode on blank cells */
 .light .mini.blank .mini-char{color:#000}
@@ -87,16 +94,15 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .day.multi-selected .day-number{color:#000}
 .day.multi-selected .mini{border-color:rgba(0,0,0,.4)}
 .day.multi-selected::after{content:"";position:absolute;inset:0;z-index:0;background:
-    radial-gradient(circle,rgba(255,255,255,.9) 0,rgba(255,255,255,.9) 2px,transparent 3px) 0 0/20px 20px,
-    radial-gradient(circle,rgba(255,255,255,.9) 0,rgba(255,255,255,.9) 2px,transparent 3px) 10px 10px/20px 20px;
-  animation:sparkle 1.6s linear infinite;animation-delay:var(--glimmer-phase,0s);pointer-events:none;mix-blend-mode:screen}
+    radial-gradient(circle,rgba(255,255,255,.9)0,rgba(255,255,255,.9)1px,transparent 1.5px) 0 0/8px 8px,
+    radial-gradient(circle,rgba(255,255,255,.9)0,rgba(255,255,255,.9)1px,transparent 1.5px) 4px 4px/8px 8px;
+  animation:sparkle .8s steps(2) infinite;animation-delay:var(--glimmer-phase,0s);pointer-events:none;mix-blend-mode:screen}
 .light .day.multi-selected{background:#ffe680!important;color:#000;box-shadow:0 0 0 1px rgba(0,0,0,.2) inset}
 .light .day.multi-selected .mini{border-color:rgba(0,0,0,.3)}
 
 @keyframes sparkle{
-  0%{background-position:0 0,10px 10px;opacity:.6}
-  50%{background-position:15px 5px,5px 15px;opacity:1}
-  100%{background-position:0 0,10px 10px;opacity:.6}
+  0%{opacity:.6;background-position:0 0,4px 4px}
+  100%{opacity:1;background-position:4px 4px,0 0}
 }
 .date-range{font-size:11px;color:var(--muted)}
 @media print{body.print-mode .app-header,body.print-mode .toolbar,body.print-mode .help,body.print-mode .box,body.print-mode #globalBar{display:none!important}
@@ -134,7 +140,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 </head>
 <body>
 <header class="app-header">
-  <div class="app-title">Term Planner v3</div>
+  <div class="app-title">Term Planner</div>
   <div id="monthRange" class="hint"></div>
 </header>
 
@@ -156,8 +162,10 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
   </div>
   <div id="globalBar" class="global-bar">
     <div class="global-header"><button id="globalApply" class="btn">Apply</button></div>
-    <div class="weekday-row"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
-    <div class="days" id="globalDays"></div>
+    <div class="global-body">
+      <div class="weekday-row"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+      <div class="days" id="globalDays"></div>
+    </div>
   </div>
   <div class="help">
   <div class="pill" style="gap:10px;flex-wrap:wrap">
@@ -187,6 +195,8 @@ const INITIAL_KEY='2026-0';
 const COLORS=[{key:'charcoal',name:'Charcoal',css:'charcoal'},{key:'red',name:'Red',css:'red'},{key:'orange',name:'Orange',css:'orange'},{key:'yellow',name:'Yellow',css:'yellow'},{key:'green',name:'Green',css:'green'},{key:'blue',name:'Blue',css:'blue'},{key:'purple',name:'Purple',css:'purple'},{key:'blank',name:'Blank',css:'blank'}];
 const colorLabels=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));
 const blankIndex=COLORS.findIndex(c=>c.key==='blank');
+const GLOBAL_COLORS=[...COLORS,{key:'blackhole',name:'Black Hole',css:'black-hole'}];
+const blackHoleIndex=GLOBAL_COLORS.length-1;
 const globalTemplate=Array.from({length:7},()=>Array(6).fill(blankIndex));
 const globalLetters=Array.from({length:7},()=>Array(6).fill(""));
 const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map();
@@ -281,11 +291,12 @@ function toggleMultiSelect(i){if(selectedDays.has(i)){dayEls[i].classList.remove
 function exitMultiSelect(){selectedDays.forEach(idx=>dayEls[idx].classList.remove('multi-selected'));selectedDays.clear();syncAllGlimmers();}
 function resetSelectedDays(){saveState();const blank=blankIndex;selectedDays.forEach(idx=>{const d=days[idx];d.grid=[blank,blank,blank,blank,blank,blank];d.letters=["","","","","",""];d.isHoliday=false;const el=dayEls[idx];el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,blank);applyMiniLetter(m,'');});});exitMultiSelect();recalcAllBoxes();}
 function globalTemplateEmpty(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){if(globalTemplate[wd][i]!==blankIndex)return false;if(globalLetters[wd][i])return false;}}return true;}
-function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){globalTemplate[wd][i]=blankIndex;globalLetters[wd][i]='';}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyMiniColor(m,blankIndex);applyMiniLetter(m,'');});}
-function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}const cur=globalTemplate[wd][i];const next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length);globalTemplate[wd][i]=next;applyMiniColor(mini,next);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);});container.appendChild(day);}}
+function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){globalTemplate[wd][i]=blankIndex;globalLetters[wd][i]='';}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyGlobalMiniColor(m,blankIndex);applyMiniLetter(m,'');});}
+function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}const cur=globalTemplate[wd][i];const next=ev.shiftKey?((cur-1+GLOBAL_COLORS.length)%GLOBAL_COLORS.length):((cur+1)%GLOBAL_COLORS.length);globalTemplate[wd][i]=next;applyGlobalMiniColor(mini,next);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyGlobalMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);});container.appendChild(day);}}
 function startGlobalMiniEdit(wd,idx,el){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');globalLetters[wd][idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,globalLetters[wd][idx]);s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
-function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<6;j++){d.grid[j]=globalTemplate[wd][j];d.letters[j]=globalLetters[wd][j];const el=dayEls[i].querySelectorAll('.mini')[j];applyMiniColor(el,d.grid[j]);applyMiniLetter(el,d.letters[j]);}}recalcAllBoxes();}
+function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<6;j++){const color=globalTemplate[wd][j];if(color===blankIndex)continue;const el=dayEls[i].querySelectorAll('.mini')[j];if(color===blackHoleIndex){d.grid[j]=blankIndex;d.letters[j]='';applyMiniColor(el,blankIndex);applyMiniLetter(el,'');}else{d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}}}recalcAllBoxes();}
 function applyMiniColor(el,idx){el.className='mini '+COLORS[idx].css}
+function applyGlobalMiniColor(el,idx){el.className='mini '+GLOBAL_COLORS[idx].css}
 function applyMiniLetter(el,t){const s=el.querySelector('.mini-char');if(s)s.textContent=(t||'').slice(0,1)}
 function startMiniEdit(d,idx,el,dayIdx){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');d.letters[idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,d.letters[idx]);if(selectedDays.size){for(const j of selectedDays){if(j===dayIdx)continue;days[j].letters[idx]=d.letters[idx];const oel=dayEls[j].querySelectorAll('.mini')[idx];applyMiniLetter(oel,d.letters[idx]);}}s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
 function updateDayBorders(pos){const L=pos-1,R=pos;if(dayEls[L]){barriers.has(pos)?dayEls[L].dataset.rightBarrier='1':delete dayEls[L].dataset.rightBarrier}if(dayEls[R]){barriers.has(pos)?dayEls[R].dataset.leftBarrier='1':delete dayEls[R].dataset.leftBarrier}}
