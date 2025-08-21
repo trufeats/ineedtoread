@@ -26,8 +26,8 @@ details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
 </head>
 <body>
 <div id="io-controls" style="text-align:center;">
-  <button id="import-btn">Import</button>
-  <button id="export-btn">Export</button>
+  <button id="import-btn" type="button">Import</button>
+  <button id="export-btn" type="button">Export</button>
 </div>
 <h1 id="project-title" style="text-align:center;">Hourly Task Tracker</h1>
 
@@ -38,7 +38,7 @@ details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
 <thead><tr><th>task</th><th>code</th><th>$</th><th>time</th><th>type</th><th></th></tr></thead>
 <tbody></tbody>
 </table>
-<button id="add-task-row">Add Task</button>
+<button id="add-task-row" type="button">Add Task</button>
 </details>
 
 <section id="work-section">
@@ -46,7 +46,7 @@ details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
 <select id="day-select"></select>
 <select id="month-select"></select>
 <select id="year-select"></select>
-<button id="add-day">Add</button>
+<button id="add-day" type="button">Add</button>
 </div>
 <div id="day-cards"></div>
 </section>
@@ -54,7 +54,7 @@ details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
 <section id="analytics">
 <h2>Analytics</h2>
 <div id="analytics-info"></div>
-<button id="toggle-avg">Hide Averages</button>
+<button id="toggle-avg" type="button">Hide Averages</button>
 <table class="analytics-table" id="analytics-table">
 <thead><tr><th>Code</th><th>Task</th><th>Type</th><th>Total $</th><th>Total Time</th><th class="avg">Daily Avg $</th><th class="avg">Weekly Avg $</th><th class="avg">Monthly Avg $</th><th class="avg">Yearly Avg $</th></tr></thead>
 <tbody></tbody>
@@ -105,7 +105,7 @@ function addTaskRow(data={}, skipUpdate=false) {
         <option value="within"${data.type==='within'?' selected':''}>within base</option>
         <option value="out"${data.type==='out'?' selected':''}>out-of-base</option>
       </select></td>
-    <td><button class="drag">↕</button><button class="del">x</button></td>`;
+    <td><button type="button" class="drag">↕</button><button type="button" class="del">x</button></td>`;
   const delBtn=tr.querySelector('.del');
   delBtn.addEventListener('click', ()=>{tr.remove();updateAnalytics();});
   const dragBtn=tr.querySelector('.drag');
@@ -166,9 +166,11 @@ function createDayCard(date, skipDefault=false){
   const summary=document.createElement('summary');
   summary.innerHTML=`<span>${date}</span>`;
   const delBtn=document.createElement('button');
+  delBtn.type='button';
   delBtn.textContent='x';
   delBtn.style.float='right';
-  delBtn.addEventListener('click', ()=>{
+  delBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
     details.remove();
     delete dayCards[date];
     if(Object.keys(dayCards).length===0) datePicker.classList.remove('hidden');
@@ -177,21 +179,28 @@ function createDayCard(date, skipDefault=false){
     if(copyModeSource===date) exitCopyMode();
   });
   const copyBtn=document.createElement('button');
+  copyBtn.type='button';
   copyBtn.textContent='copy';
   copyBtn.style.background='orange';
-  copyBtn.addEventListener('click',()=>{
-    if(!copyModeSource){enterCopyMode(date);}else if(copyModeSource===date){exitCopyMode();}else{pasteDay(copyModeSource,date);} });
+  copyBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    if(!copyModeSource){enterCopyMode(date);}else if(copyModeSource===date){exitCopyMode();}else{pasteDay(copyModeSource,date);}
+  });
   const prevBtn=document.createElement('button');
+  prevBtn.type='button';
   prevBtn.textContent='-1d';
-  prevBtn.addEventListener('click',()=>{
+  prevBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
     const newDate=new Date(date);
     newDate.setDate(newDate.getDate()-1);
     const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
     if(!dayCards[n]){createDayCard(n); updateAnalytics();}
   });
   const nextBtn=document.createElement('button');
+  nextBtn.type='button';
   nextBtn.textContent='+1d';
-  nextBtn.addEventListener('click',()=>{
+  nextBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();
     const newDate=new Date(date);
     newDate.setDate(newDate.getDate()+1);
     const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
@@ -208,6 +217,7 @@ function createDayCard(date, skipDefault=false){
   const tBody=table.querySelector('tbody');
   details.appendChild(table);
   const addRowBtn=document.createElement('button');
+  addRowBtn.type='button';
   addRowBtn.textContent='Add Row';
   details.appendChild(addRowBtn);
   const totals=document.createElement('div');
@@ -222,7 +232,7 @@ function createDayCard(date, skipDefault=false){
       <td><input type="number" class="amt" value="${data.amt||0}" style="width:60px;"></td>
       <td class="time">0</td>
       <td class="pay">0</td>
-      <td><button class="del">x</button></td>`;
+      <td><button type="button" class="del">x</button></td>`;
     const codeInput=tr.querySelector('.code');
     const amtInput=tr.querySelector('.amt');
 
