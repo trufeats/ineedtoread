@@ -17,6 +17,10 @@ html, body {
   z-index: 1000;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .overlay.quick {
   background: rgba(255,255,255,0.6);
 }
