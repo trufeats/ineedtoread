@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vocab Tennis</title>
+<link rel="stylesheet" href="css/vocab-tennis.css">
+</head>
+<body>
+<div id="setupScreen" class="overlay">
+  <h2>Select number of teams</h2>
+  <div class="setup-buttons">
+    <button data-teams="2">2 Teams</button>
+    <button data-teams="3">3 Teams</button>
+    <button data-teams="4">4 Teams</button>
+  </div>
+</div>
+
+<header>
+  <div id="topic" contenteditable="true">Topic</div>
+  <div id="timerSection">
+    <div id="timer">30</div>
+    <div id="timeControls">
+      <button class="time-set" data-time="30">30s</button>
+      <button class="time-set" data-time="20">20s</button>
+      <button class="time-set" data-time="10">10s</button>
+    </div>
+    <div id="wordInputContainer">
+      <input type="text" id="wordInput" placeholder="Enter word and press Enter">
+      <button id="toggleLog">–</button>
+    </div>
+    <div id="wordLog"></div>
+  </div>
+</header>
+
+<div id="gameArea"></div>
+<div id="eliminatedArea" class="hidden"></div>
+
+<div id="controls" class="hidden">
+  <button id="checkBtn">✔</button>
+  <button id="xBtn">✖</button>
+</div>
+<div id="restart" class="hidden">↻</div>
+
+<script src="js/vocab-tennis.js"></script>
+</body>
+</html>

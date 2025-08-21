@@ -1,0 +1,169 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #000;
+  color: #fff;
+}
+
+.overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.setup-buttons button {
+  font-size: 2em;
+  margin: 0.5em;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  align-items: flex-start;
+}
+
+#topic {
+  font-size: 2em;
+  cursor: text;
+}
+
+#timerSection {
+  text-align: right;
+}
+
+#timer {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+#timeControls {
+  margin-top: 5px;
+  display: flex;
+  gap: 5px;
+}
+
+#wordInputContainer {
+  margin-top: 5px;
+  display: flex;
+}
+
+#wordInput {
+  flex: 1;
+}
+
+#toggleLog {
+  margin-left: 5px;
+}
+
+#wordLog {
+  margin-top: 5px;
+  background: rgba(54,69,79,0.8);
+  padding: 5px;
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 0.8em;
+}
+
+#wordLog.minimized {
+  display: none;
+}
+
+.word {
+  cursor: pointer;
+}
+
+#gameArea {
+  display: grid;
+  gap: 5px;
+  background: #36454F;
+  height: calc(100vh - 260px);
+}
+
+#eliminatedArea {
+  display: none;
+  height: 80px;
+  gap: 5px;
+  background: #36454F;
+}
+
+#eliminatedArea.show {
+  display: flex;
+}
+
+.team {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3em;
+  color: #fff;
+}
+
+.team.red { background: #d00; }
+.team.blue { background: #00f; }
+.team.green { background: #0a0; }
+.team.white { background: #eee; color: #000; }
+
+#controls {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 20px;
+  z-index: 500;
+}
+
+#controls.hidden {
+  display: none;
+}
+
+#controls button {
+  width: 100px;
+  height: 100px;
+  font-size: 3em;
+}
+
+#restart {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4em;
+  cursor: pointer;
+  z-index: 500;
+}
+
+#restart.hidden {
+  display: none;
+}
+
+#ball {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: yellow;
+  box-shadow: 0 0 10px yellow;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
