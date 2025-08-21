@@ -165,6 +165,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
   <div class="toolbar" style="margin-top:0">
     <button id="prevMonthBtn" class="btn" title="Add previous month">&laquo; Prev</button>
     <button id="nextMonthBtn" class="btn" title="Add next month">Next &raquo;</button>
+    <button id="colsBtn" class="btn" title="Adjust mini columns">Cols: 2</button>
     <button id="globalToggle" class="btn" title="Apply to all weekdays">Global</button>
   </div>
   <div id="globalBar" class="global-bar">
@@ -203,15 +204,23 @@ const BUILD_START={y:2025,m:0};
 const BUILD_END={y:2035,m:11};
 const INITIAL_KEY='2026-0';
 const COLORS=[{key:'charcoal',name:'Charcoal',css:'charcoal'},{key:'red',name:'Red',css:'red'},{key:'orange',name:'Orange',css:'orange'},{key:'yellow',name:'Yellow',css:'yellow'},{key:'green',name:'Green',css:'green'},{key:'blue',name:'Blue',css:'blue'},{key:'purple',name:'Purple',css:'purple'},{key:'blank',name:'Blank',css:'blank'}];
-const colorLabels=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));
 const blankIndex=COLORS.findIndex(c=>c.key==='blank');
 const charcoalIdx=COLORS.findIndex(c=>c.key==='charcoal');
+const ROWS=3;
+let miniCols=2;
+const miniCount=()=>ROWS*miniCols;
+const blankCode=blankIndex*10;
+const charcoalCode=charcoalIdx*10;
+const colorLabels={};
+for(const c of COLORS){colorLabels[c.key]=c.name;}
+for(const c of COLORS){if(c.key!=='charcoal'&&c.key!=='blank'){for(let s=1;s<=9;s++){colorLabels[`${s}+${c.key}`]=`${s}+${c.name}`;}}}
+const defaultColorLabels={...colorLabels};
 const GLOBAL_COLORS=[...COLORS,{key:'blackhole',name:'Black Hole',css:'black-hole'}];
 const blackHoleIndex=GLOBAL_COLORS.length-1;
-const globalTemplate=Array.from({length:7},()=>Array(6).fill(blankIndex));
-const globalLetters=Array.from({length:7},()=>Array(6).fill(""));
+let globalTemplate=Array.from({length:7},()=>Array(miniCount()).fill(blankCode));
+let globalLetters=Array.from({length:7},()=>Array(miniCount()).fill(""));
 const days=[],dayEls=[],barriers=new Set(),barrierBoxes=new Map(),notesBoxes=new Map();
-let noteSeq=1,activeFocusPos=null,tHeld=false,lHeld=false;
+let noteSeq=1,activeFocusPos=null,tHeld=false,lHeld=false,numberHeld=null;
 const monthsRoot=document.getElementById('months'),wrap=document.getElementById('calendarWrap');
 const plannerTitleEl=document.getElementById('plannerTitle');
 const monthSections=new Map(),monthOrder=[],lockedMonths=new Set();
@@ -240,8 +249,8 @@ function buildDays(){
       year:d.getUTCFullYear(),
       dayOfMonth:d.getUTCDate(),
       weekDay:d.getUTCDay(),
-      grid:Array(6).fill(blankIndex),
-      letters:["","","","","",""],
+      grid:Array(miniCount()).fill(blankCode),
+      letters:Array(miniCount()).fill(""),
       isHoliday:false
     });
   }
@@ -289,10 +298,10 @@ function renderDayCells(){
     for(const d of md){
       const day=document.createElement('div'); day.className='day'; day.dataset.index=gi;
       day.innerHTML=`<div class="day-number">${d.dayOfMonth}</div>
-<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class=\"mini blank\" data-mini=\"${i}\"><span class=\"mini-char\"></span></div>`).join('')}</div>
+<div class="mini-grid" style="grid-template-columns:repeat(${miniCols},1fr);grid-template-rows:repeat(${ROWS},1fr);">${Array.from({length:miniCount()}).map((_,i)=>`<div class=\"mini blank\" data-mini=\"${i}\"><span class=\"mini-char\"></span></div>`).join('')}</div>
 <div class="barrier-handle left" data-edge="left" title="Toggle barrier (left)"></div>
 <div class="barrier-handle right" data-edge="right" title="Toggle barrier (right)"></div>`;
-      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } saveState(); const cur=d.grid[i], next=ev.shiftKey?((cur-1+COLORS.length)%COLORS.length):((cur+1)%COLORS.length); d.grid[i]=next; applyMiniColor(mini,next); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=next;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,next);if(easterState&&easterCharDays.has(idx)&&next===blankIndex)triggerAnger(od.year,od.monthIndex);}} recalcAllBoxes(); if(easterState&&easterCharDays.has(di)&&next===blankIndex){triggerAnger(d.year,d.monthIndex);} });
+      day.querySelector('.mini-grid').addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; const mini=ev.target.closest('.mini'); if(!mini) return; const i=+mini.dataset.mini; const di=+day.dataset.index; if(tHeld){ saveState(); startMiniEdit(d,i,mini,di); return } saveState(); let code=d.grid[i]; let base=Math.floor(code/10), shade=code%10; if(numberHeld!==null && base!==charcoalIdx && base!==blankIndex){ shade=numberHeld; } else { base=ev.shiftKey?((base-1+COLORS.length)%COLORS.length):((base+1)%COLORS.length); if(base===blankIndex||base===charcoalIdx) shade=0; } code=base*10+shade; d.grid[i]=code; applyMiniColor(mini,code); if(selectedDays.size){for(const idx of selectedDays){if(idx===di)continue;const od=days[idx];od.grid[i]=code;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,code);if(easterState&&easterCharDays.has(idx)&&Math.floor(code/10)===blankIndex)triggerAnger(od.year,od.monthIndex);}} recalcAllBoxes(); if(easterState&&easterCharDays.has(di)&&Math.floor(code/10)===blankIndex){triggerAnger(d.year,d.monthIndex);} });
       day.querySelectorAll('.barrier-handle').forEach(h=>h.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; ev.stopPropagation(); const edge=h.dataset.edge, idx=+day.dataset.index, pos=(edge==='left')?idx:(idx+1); if(ev.shiftKey){showBarrierBox(pos);return;} toggleBarrier(pos);}));
       day.querySelector('.day-number').addEventListener('click',()=>{ if(isMonthLocked(d.year,d.monthIndex)||selectedDays.size) return; openBoxForDay(+day.dataset.index);});
       day.addEventListener('click',ev=>{ if(isMonthLocked(d.year,d.monthIndex)) return; if(ev.target.closest('.mini')||ev.target.closest('.barrier-handle')||ev.target.closest('.day-number')) return; const idx=+day.dataset.index; if(ev.shiftKey){toggleMultiSelect(idx);return;} if(selectedDays.size){toggleHolidayMulti(idx);return;} toggleHoliday(idx); });
@@ -306,38 +315,48 @@ function dayIsVisible(i){const d=days[i];const key=d.year+'-'+d.monthIndex;const
 function daySelectable(i){const d=days[i];return d&&!d.isHoliday&&!isMonthLocked(d.year,d.monthIndex);}
 function toggleMultiSelect(i){if(selectedDays.has(i)){dayEls[i].classList.remove('multi-selected');selectedDays.delete(i);if(selectedDays.size===0)syncAllGlimmers();return;}if(!daySelectable(i))return;selectedDays.add(i);dayEls[i].classList.add('multi-selected');syncAllGlimmers();}
 function exitMultiSelect(){selectedDays.forEach(idx=>dayEls[idx].classList.remove('multi-selected'));selectedDays.clear();syncAllGlimmers();}
-function resetSelectedDays(){saveState();const blank=blankIndex;selectedDays.forEach(idx=>{const d=days[idx];d.grid=[blank,blank,blank,blank,blank,blank];d.letters=["","","","","",""];d.isHoliday=false;const el=dayEls[idx];el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,blank);applyMiniLetter(m,'');});});exitMultiSelect();recalcAllBoxes();}
-function globalTemplateEmpty(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){if(globalTemplate[wd][i]!==blankIndex)return false;if(globalLetters[wd][i])return false;}}return true;}
-function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<6;i++){globalTemplate[wd][i]=blankIndex;globalLetters[wd][i]='';}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyGlobalMiniColor(m,blankIndex);applyMiniLetter(m,'');});}
-function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid">${Array.from({length:6}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}const cur=globalTemplate[wd][i];const next=ev.shiftKey?((cur-1+GLOBAL_COLORS.length)%GLOBAL_COLORS.length):((cur+1)%GLOBAL_COLORS.length);globalTemplate[wd][i]=next;applyGlobalMiniColor(mini,next);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyGlobalMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);});container.appendChild(day);}}
+function resetSelectedDays(){saveState();const blank=blankCode;selectedDays.forEach(idx=>{const d=days[idx];d.grid=Array(miniCount()).fill(blank);d.letters=Array(miniCount()).fill("");d.isHoliday=false;const el=dayEls[idx];el.classList.remove('holiday');const minis=el.querySelectorAll('.mini');minis.forEach(m=>{applyMiniColor(m,blank);applyMiniLetter(m,'');});});exitMultiSelect();recalcAllBoxes();}
+function globalTemplateEmpty(){for(let wd=0;wd<7;wd++){for(let i=0;i<miniCount();i++){if(globalTemplate[wd][i]!==blankCode)return false;if(globalLetters[wd][i])return false;}}return true;}
+function resetGlobalTemplate(){for(let wd=0;wd<7;wd++){for(let i=0;i<miniCount();i++){globalTemplate[wd][i]=blankCode;globalLetters[wd][i]='';}}document.querySelectorAll('#globalDays .mini').forEach(m=>{applyGlobalMiniColor(m,blankCode);applyMiniLetter(m,'');});}
+function setMiniColumns(cols){if(cols<1||cols>5)return;miniCols=cols;const mc=miniCount();globalTemplate=Array.from({length:7},()=>Array(mc).fill(blankCode));globalLetters=Array.from({length:7},()=>Array(mc).fill(""));for(const d of days){const oldGrid=d.grid,oldLetters=d.letters;const oc=oldGrid.length/ROWS;const ng=[],nl=[];for(let r=0;r<ROWS;r++){for(let c=0;c<miniCols;c++){const oi=r*oc+c;ng.push(oldGrid[oi]??blankCode);nl.push(oldLetters[oi]??'');}}d.grid=ng;d.letters=nl;}dayEls.forEach((dayEl,di)=>{const newGrid=document.createElement('div');newGrid.className='mini-grid';newGrid.style.gridTemplateColumns=`repeat(${miniCols},1fr)`;newGrid.style.gridTemplateRows=`repeat(${ROWS},1fr)`;newGrid.innerHTML=Array.from({length:mc}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('');const d=days[di];newGrid.addEventListener('click',ev=>{if(isMonthLocked(d.year,d.monthIndex)) return;const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;const di2=di;if(tHeld){saveState();startMiniEdit(d,i,mini,di2);return}saveState();let code=d.grid[i];let base=Math.floor(code/10),shade=code%10;if(numberHeld!==null&&base!==charcoalIdx&&base!==blankIndex){shade=numberHeld;}else{base=ev.shiftKey?((base-1+COLORS.length)%COLORS.length):((base+1)%COLORS.length);if(base===blankIndex||base===charcoalIdx)shade=0;}code=base*10+shade;d.grid[i]=code;applyMiniColor(mini,code);if(selectedDays.size){for(const idx of selectedDays){if(idx===di2)continue;const od=days[idx];od.grid[i]=code;const oel=dayEls[idx].querySelectorAll('.mini')[i];applyMiniColor(oel,code);if(easterState&&easterCharDays.has(idx)&&Math.floor(code/10)===blankIndex)triggerAnger(od.year,od.monthIndex);}}recalcAllBoxes();if(easterState&&easterCharDays.has(di2)&&Math.floor(code/10)===blankIndex){triggerAnger(d.year,d.monthIndex);}});const old=dayEl.querySelector('.mini-grid');dayEl.replaceChild(newGrid,old);newGrid.querySelectorAll('.mini').forEach((mini,i)=>{applyMiniColor(mini,d.grid[i]);applyMiniLetter(mini,d.letters[i]);});});buildGlobalWeek();}
+function buildGlobalWeek(){const container=document.getElementById('globalDays');if(!container)return;const order=[0,1,2,3,4,5,6];container.innerHTML='';for(const wd of order){const day=document.createElement('div');day.className='day global-day';day.dataset.wd=wd;day.innerHTML=`<div class="mini-grid" style="grid-template-columns:repeat(${miniCols},1fr);grid-template-rows:repeat(${ROWS},1fr);">${Array.from({length:miniCount()}).map((_,i)=>`<div class="mini blank" data-mini="${i}"><span class="mini-char"></span></div>`).join('')}</div>`;day.querySelector('.mini-grid').addEventListener('click',ev=>{const mini=ev.target.closest('.mini');if(!mini)return;const i=+mini.dataset.mini;if(tHeld){startGlobalMiniEdit(wd,i,mini);return}let code=globalTemplate[wd][i];let base=Math.floor(code/10), shade=code%10;if(numberHeld!==null && base!==charcoalIdx && base!==blankIndex && base!==blackHoleIndex){shade=numberHeld;}else{base=ev.shiftKey?((base-1+GLOBAL_COLORS.length)%GLOBAL_COLORS.length):((base+1)%GLOBAL_COLORS.length);if(base===blankIndex||base===charcoalIdx||base===blackHoleIndex)shade=0;}code=base*10+shade;globalTemplate[wd][i]=code;applyGlobalMiniColor(mini,code);});day.querySelectorAll('.mini').forEach((mini,i)=>{applyGlobalMiniColor(mini,globalTemplate[wd][i]);applyMiniLetter(mini,globalLetters[wd][i]);});container.appendChild(day);}}
 function startGlobalMiniEdit(wd,idx,el){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');globalLetters[wd][idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,globalLetters[wd][idx]);s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
-function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<6;j++){const color=globalTemplate[wd][j];if(color===blankIndex)continue;const el=dayEls[i].querySelectorAll('.mini')[j];if(color===blackHoleIndex){d.grid[j]=blankIndex;d.letters[j]='';applyMiniColor(el,blankIndex);applyMiniLetter(el,'');}else{d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}if(easterState&&easterCharDays.has(i)&&d.grid[j]===blankIndex){triggerAnger(d.year,d.monthIndex);}}}recalcAllBoxes();}
-function applyMiniColor(el,idx){el.className='mini '+COLORS[idx].css}
-function applyGlobalMiniColor(el,idx){el.className='mini '+GLOBAL_COLORS[idx].css}
+function applyGlobalTemplate(){saveState();for(let i=0;i<days.length;i++){const d=days[i];if(!dayIsVisible(i)||d.isHoliday||isMonthLocked(d.year,d.monthIndex))continue;const wd=d.weekDay;for(let j=0;j<miniCount();j++){const color=globalTemplate[wd][j];const base=Math.floor(color/10), shade=color%10;if(base===blankIndex)continue;const el=dayEls[i].querySelectorAll('.mini')[j];if(base===blackHoleIndex){d.grid[j]=blankCode;d.letters[j]='';applyMiniColor(el,blankCode);applyMiniLetter(el,'');}else{d.grid[j]=color;d.letters[j]=globalLetters[wd][j];applyMiniColor(el,color);applyMiniLetter(el,d.letters[j]);}if(easterState&&easterCharDays.has(i)&&Math.floor(d.grid[j]/10)===blankIndex){triggerAnger(d.year,d.monthIndex);}}}recalcAllBoxes();}
+function applyMiniColor(el,code){const base=Math.floor(code/10), shade=code%10;const css=COLORS[base]?COLORS[base].css:'blank';el.className='mini '+css;el.style.background='';if(base===blackHoleIndex&&GLOBAL_COLORS[base]){el.className='mini '+GLOBAL_COLORS[base].css;}else if(base!==blankIndex&&base!==charcoalIdx){if(shade){const hex=getCSSVar(COLORS[base].key);el.style.background=shadeColor(hex,shade);} }
+}
+function applyGlobalMiniColor(el,code){const base=Math.floor(code/10), shade=code%10;el.className='mini '+GLOBAL_COLORS[base].css;el.style.background='';if(base!==blankIndex&&base!==charcoalIdx&&base!==blackHoleIndex){if(shade){const hex=getCSSVar(GLOBAL_COLORS[base].key);el.style.background=shadeColor(hex,shade);} }}
 function applyMiniLetter(el,t){const s=el.querySelector('.mini-char');if(s)s.textContent=(t||'').slice(0,1)}
 function startMiniEdit(d,idx,el,dayIdx){const s=el.querySelector('.mini-char');if(!s)return;el.classList.add('editing');s.contentEditable='true';s.focus();const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(s);r.collapse(false);sel.removeAllRanges();sel.addRange(r);function end(){s.contentEditable='false';el.classList.remove('editing');d.letters[idx]=(s.textContent||'').slice(0,1);applyMiniLetter(el,d.letters[idx]);if(selectedDays.size){for(const j of selectedDays){if(j===dayIdx)continue;days[j].letters[idx]=d.letters[idx];const oel=dayEls[j].querySelectorAll('.mini')[idx];applyMiniLetter(oel,d.letters[idx]);}}s.removeEventListener('input',onI);s.removeEventListener('keydown',onK);s.removeEventListener('blur',end)}function onI(){if(s.textContent&&s.textContent.length>1){s.textContent=s.textContent.slice(0,1);const rr=document.createRange();rr.selectNodeContents(s);rr.collapse(false);const ss=window.getSelection();ss.removeAllRanges();ss.addRange(rr)}}function onK(e){if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();end()}}s.addEventListener('input',onI);s.addEventListener('keydown',onK);s.addEventListener('blur',end)}
 function updateDayBorders(pos){const L=pos-1,R=pos;if(dayEls[L]){barriers.has(pos)?dayEls[L].dataset.rightBarrier='1':delete dayEls[L].dataset.rightBarrier}if(dayEls[R]){barriers.has(pos)?dayEls[R].dataset.leftBarrier='1':delete dayEls[R].dataset.leftBarrier}}
 function nearestPrevBarrier(pos){let prev=0;for(const p of Array.from(barriers).sort((a,b)=>a-b)){if(p<pos)prev=p;else break}return prev}
 function segmentFor(pos){const start=nearestPrevBarrier(pos),end=pos-1;return{start,end}}
 function countsInRange(start,end){
-  const counts=Object.fromEntries(COLORS.map(c=>[c.key,0]));
+  const counts={};
+  for(const k in colorLabels) counts[k]=0;
   for(let i=start;i<=end;i++){
     const d=days[i];
-    if(d.isHoliday){ counts['charcoal']++; continue; }
+    if(d.isHoliday){ counts[colorKey(charcoalIdx,0)]++; continue; }
     const set=new Set();
-    for(const idx of d.grid){
-      const key=COLORS[idx].key;
-      if(key!=='blank') set.add(key);
+    for(const code of d.grid){
+      const base=Math.floor(code/10), shade=code%10;
+      const key=colorKey(base,shade);
+      if(key===colorKey(blankIndex,0)) continue;
+      set.add(key);
     }
-    for(const k of set) counts[k]++;
+    for(const k of set) counts[k]=(counts[k]||0)+1;
   }
   return counts;
 }
-function nonZeroSorted(counts){const order=Object.fromEntries(COLORS.map((c,i)=>[c.key,i]));return Object.entries(counts).filter(([,v])=>v>0).sort((a,b)=>order[a[0]]-order[b[0]])}
+function nonZeroSorted(counts){const order={};COLORS.forEach((c,i)=>{order[colorKey(i,0)]=i*10;if(c.key!=='charcoal'&&c.key!=='blank'){for(let s=1;s<=9;s++)order[`${s}+${c.key}`]=i*10+s;}});return Object.entries(counts).filter(([,v])=>v>0).sort((a,b)=>order[a[0]]-order[b[0]]);}
 function getCSSVar(key){const s=getComputedStyle(document.documentElement);return({charcoal:'--c-charcoal',red:'--c-red',orange:'--c-orange',yellow:'--c-yellow',green:'--c-green',blue:'--c-blue',purple:'--c-purple'}[key]||'')?s.getPropertyValue({charcoal:'--c-charcoal',red:'--c-red',orange:'--c-orange',yellow:'--c-yellow',green:'--c-green',blue:'--c-blue',purple:'--c-purple'}[key]):'transparent'}
+function shadeColor(hex,shade){if(shade===0)return hex;const amt=shade<=4?(5-shade)*20:-(shade-5)*20;return adjustBrightness(hex,amt);}
+function adjustBrightness(hex,amt){hex=hex.replace('#','');let num=parseInt(hex,16);let r=(num>>16)+amt,g=((num>>8)&0x00ff)+amt,b=(num&0x0000ff)+amt;r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));return'#'+(b| (g<<8) | (r<<16)).toString(16).padStart(6,'0');}
+function colorKey(base,shade){const baseKey=COLORS[base].key;return shade?`${shade}+${baseKey}`:baseKey;}
+function parseColorKey(key){if(key.includes('+')){const [s,b]=key.split('+');return{baseKey:b,shade:parseInt(s,10)||0};}return{baseKey:key,shade:0};}
+function getColorHexFromKey(key){const {baseKey,shade}=parseColorKey(key);const hex=getCSSVar(baseKey);if(shade===0||baseKey==='charcoal'||baseKey==='blank')return hex;return shadeColor(hex,shade);}
 function formatDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
 function formatRange(start,end){return `${formatDate(days[start].date)} - ${formatDate(days[end].date)}`}
-function buildCountsList(counts){const wrap=document.createElement('div');wrap.className='counts';const arr=nonZeroSorted(counts);if(arr.length===0){const none=document.createElement('div');none.className='hint';none.textContent='No colored cells in this term yet';wrap.appendChild(none);return wrap}for(const [key,val] of arr){const row=document.createElement('div');row.className='count-row';const sw=document.createElement('div');sw.className='swatch';sw.style.background=getCSSVar(key);const label=document.createElement('div');label.className='label';label.contentEditable='true';label.dataset.colorKey=key;label.textContent=colorLabels[key];label.setAttribute('placeholder',key);const num=document.createElement('div');num.textContent=val;label.addEventListener('input',()=>{colorLabels[key]=label.textContent||'';document.querySelectorAll(`.label[data-color-key="${key}"]`).forEach(el=>{if(el!==label)el.textContent=colorLabels[key]})});row.appendChild(sw);row.appendChild(label);row.appendChild(num);wrap.appendChild(row)}return wrap}
+function buildCountsList(counts){const wrap=document.createElement('div');wrap.className='counts';const arr=nonZeroSorted(counts);if(arr.length===0){const none=document.createElement('div');none.className='hint';none.textContent='No colored cells in this term yet';wrap.appendChild(none);return wrap}for(const [key,val] of arr){const row=document.createElement('div');row.className='count-row';const sw=document.createElement('div');sw.className='swatch';sw.style.background=getColorHexFromKey(key);const label=document.createElement('div');label.className='label';label.contentEditable='true';label.dataset.colorKey=key;label.textContent=colorLabels[key];label.setAttribute('placeholder',key);const num=document.createElement('div');num.textContent=val;label.addEventListener('input',()=>{colorLabels[key]=label.textContent||'';document.querySelectorAll(`.label[data-color-key="${key}"]`).forEach(el=>{if(el!==label)el.textContent=colorLabels[key]})});row.appendChild(sw);row.appendChild(label);row.appendChild(num);wrap.appendChild(row)}return wrap}
 function buildTermsReport(){const sorted=[...barrierBoxes.entries()].sort((a,b)=>a[0]-b[0]);const lines=['Term Date Ranges',''];if(!sorted.length){lines.push('No terms yet');return lines.join('\n');}for(const [pos,b] of sorted){const {start,end}=segmentFor(pos);const title=(b.title||'Untitled Term');const range=`${formatDate(days[start].date)} – ${formatDate(days[end].date)}`;lines.push(`${title}: ${range}`);}lines.push('');for(const [pos,b] of sorted){const {start,end}=segmentFor(pos);const title=(b.title||'Untitled Term');const range=`${formatDate(days[start].date)} – ${formatDate(days[end].date)}`;lines.push(title);lines.push(range);lines.push('----------------');const hols=[];for(let i=start;i<=end;i++){if(days[i].isHoliday){hols.push(formatDate(days[i].date));}}lines.push('Holidays: '+(hols.length?hols.join(', '):'None'));const counts=countsInRange(start,end);for(const [key,val] of nonZeroSorted(counts)){lines.push(`${colorLabels[key]||key}: ${val}`);}lines.push('');}return lines.join('\n');}
 function downloadTxt(name,txt){const a=document.createElement('a');const blob=new Blob([txt],{type:'text/plain'});a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);}
 function avoidOverlap(el){const others=[...document.querySelectorAll('.box')].filter(b=>b!==el&&b.style.display!=='none');const baseLeft=parseFloat(el.style.left)||0;const baseTop=parseFloat(el.style.top)||0;let off=0;while(others.some(o=>Math.abs(parseFloat(o.style.left)-(baseLeft+off))<1&&Math.abs(parseFloat(o.style.top)-(baseTop+off))<1)){off+=20;}if(off){el.style.left=baseLeft+off+'px';el.style.top=baseTop+off+'px';}}
@@ -363,7 +382,7 @@ function setFocus(pos){clearFocus();const b=barrierBoxes.get(pos);if(!b)return;c
 function clearFocus(){for(const el of dayEls)el.classList.remove('hiddenOutside');if(activeFocusPos!=null){const b=barrierBoxes.get(activeFocusPos);if(b){b.focusOn=false;const t=b.el.querySelector('.focus-toggle');if(t)t.classList.remove('on')}}activeFocusPos=null}
 function nextBarrierAfter(idx){const s=[...barriers].sort((a,b)=>a-b);for(const p of s)if(p>idx)return p;return null}
 function openBoxForDay(i){const pos=nextBarrierAfter(i);if(!pos)return;const b=barrierBoxes.get(pos);if(!b)return;b.el.style.display='';b.closed=false;positionBox(pos)}
-function setHolidayState(i,val){const d=days[i],el=dayEls[i];const b=blankIndex,ch=COLORS.findIndex(c=>c.key==='charcoal');if(!d||!el)return;if(val){d.isHoliday=true;d.grid=[ch,ch,ch,ch,ch,ch];d.letters=["","","","","",""];el.classList.add('holiday');el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,ch);applyMiniLetter(m,"");});}else{d.isHoliday=false;d.grid=[b,b,b,b,b,b];d.letters=["","","","","",""];el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,b);applyMiniLetter(m,'');});}}
+function setHolidayState(i,val){const d=days[i],el=dayEls[i];if(!d||!el)return;if(val){d.isHoliday=true;d.grid=Array(miniCount()).fill(charcoalCode);d.letters=Array(miniCount()).fill("");el.classList.add('holiday');el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,charcoalCode);applyMiniLetter(m,'');});}else{d.isHoliday=false;d.grid=Array(miniCount()).fill(blankCode);d.letters=Array(miniCount()).fill("");el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,blankCode);applyMiniLetter(m,'');});}}
 function toggleHoliday(i){saveState();setHolidayState(i,!days[i].isHoliday);recalcAllBoxes();syncAllGlimmers();}
 function toggleHolidayMulti(i){saveState();const makeHoliday=!days[i].isHoliday;selectedDays.forEach(idx=>setHolidayState(idx,makeHoliday));exitMultiSelect();recalcAllBoxes();syncAllGlimmers();}
 function saveState(){exportState().then(s=>{undoStack.push(s);if(undoStack.length>100)undoStack.shift();redoStack.length=0;});}
@@ -423,12 +442,12 @@ function b64(u){return btoa(String.fromCharCode.apply(null,u))}
 function ub64(s){const b=atob(s);const a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
 function ve(n){const a=[];while(n>127){a.push((n&127)|128);n>>>=7}a.push(n);return a}
 function vd(u,i){let n=0,s=0,b;do{b=u[i++];n|=(b&127)<<s;s+=7}while(b&128);return[n,i]}
-function packDays(){const start=epochDays(days[0].date),len=days.length;const head=[...ve(start),...ve(len)];let cur=0,nb=0,out=[];const pb=b=>{cur|=(b&1)<<nb;nb++;if(nb===8){out.push(cur);cur=0;nb=0}};const pb3=v=>{pb(v&1);pb((v>>1)&1);pb((v>>2)&1)};for(const d of days){pb(d.isHoliday?1:0);for(let i=0;i<6;i++)pb3(d.grid[i]|0)}if(nb)out.push(cur);return new Uint8Array([...head,...out])}
-function applyDayVisual(i){const d=days[i],el=dayEls[i];if(!el)return;el.classList.toggle('holiday',!!d.isHoliday);for(let k=0;k<6;k++){const mini=el.querySelectorAll('.mini')[k];applyMiniColor(mini,d.grid[k]|0);applyMiniLetter(mini,d.letters[k]||'')}}
-function unpackDays(U){let i=0;let [start,i2]=vd(U,0);let [len,i3]=vd(U,i2);i=i3;const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date),j);let byteIdx=i,bit=0,cur=U[byteIdx]||0;const gb=()=>{const v=(cur>>bit)&1;bit++;if(bit===8){bit=0;byteIdx++;cur=U[byteIdx]||0}return v};for(let k=0;k<len;k++){const ep=start+k,di=map.get(ep);const hol=gb()?1:0;let arr=[0,0,0,0,0,0];for(let m=0;m<6;m++){let v=gb()|(gb()<<1)|(gb()<<2);arr[m]=v}if(di!=null){days[di].isHoliday=hol?true:false;days[di].grid=arr;applyDayVisual(di)}}}
-function packLetters(){const out=[];for(let i=0;i<days.length;i++){const L=days[i].letters;if(L.some(x=>x&&x.length)){out.push(...ve(i));for(let k=0;k<6;k++){const c=L[k]?L[k].charCodeAt(0)&255:0;out.push(c)}}}return new Uint8Array(out)}
-function unpackLetters(U,start){let i=0;const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date)-start,j);while(i<U.length){let off;[off,i]=vd(U,i);const di=map.get(off);for(let k=0;k<6;k++){const c=U[i++];if(di!=null){days[di].letters[k]=c?String.fromCharCode(c):'';const mini=dayEls[di].querySelectorAll('.mini')[k];applyMiniLetter(mini,days[di].letters[k])}}}}
-function exportState(){return new Promise(async(res,rej)=>{try{const daysB=packDays();const lettersB=packLetters();const start=epochDays(days[0].date);const barr=[...barriers].sort((a,b)=>a-b).map(p=>p-1);const terms=[...barrierBoxes.entries()].map(([pos,b])=>({o:pos-1,t:b.title||'',c:!!b.closed}));const notes=[...notesBoxes.entries()].map(([id,b])=>{const r=b.el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();return{t:b.title||'',b:b.el.querySelector('.note-content').textContent||'',x:Math.round(r.left-wr.left),y:Math.round(r.top-wr.top),w:Math.round(r.width),h:Math.round(r.height),c:!!b.closed}});const def=Object.fromEntries(COLORS.map(c=>[c.key,c.name]));const lab={};for(const k in colorLabels){if(colorLabels[k]!==def[k])lab[k]=colorLabels[k]}const b64days=b64(daysB),b64letters=b64(lettersB),b64bars=btoa(JSON.stringify(barr)),b64terms=btoa(JSON.stringify(terms));let hdr='V1',b64notes;try{if('CompressionStream'in window&&notes.length){const json=JSON.stringify(notes);const cs=new CompressionStream('gzip');const stream=new Blob([json]).stream().pipeThrough(cs);const buf=await new Response(stream).arrayBuffer();b64notes=b64(new Uint8Array(buf));hdr='V1Z'}else{b64notes=btoa(JSON.stringify(notes))}}catch{b64notes=btoa(JSON.stringify(notes))}const out=[hdr,b64days,b64letters,b64bars,b64terms,b64notes,JSON.stringify(lab),JSON.stringify([...lockedMonths]),btoa(plannerTitle)].join('|');res(out)}catch(e){rej(e)}})}
+function packDays(){const start=epochDays(days[0].date),len=days.length,cols=miniCols;const head=[...ve(start),...ve(len),...ve(cols)];let cur=0,nb=0,out=[];const pb=b=>{cur|=(b&1)<<nb;nb++;if(nb===8){out.push(cur);cur=0;nb=0}};const pbN=(v,bits)=>{for(let k=0;k<bits;k++)pb((v>>k)&1);};for(const d of days){pb(d.isHoliday?1:0);for(let i=0;i<miniCount();i++){const code=d.grid[i]|0;const base=Math.floor(code/10),shade=code%10;pbN(base,3);pbN(shade,4);}}if(nb)out.push(cur);return new Uint8Array([...head,...out])}
+function applyDayVisual(i){const d=days[i],el=dayEls[i];if(!el)return;el.classList.toggle('holiday',!!d.isHoliday);const minis=el.querySelectorAll('.mini');for(let k=0;k<minis.length;k++){applyMiniColor(minis[k],d.grid[k]|0);applyMiniLetter(minis[k],d.letters[k]||'');}}
+function unpackDays(U){let i=0;let [start,i2]=vd(U,0);let [len,i3]=vd(U,i2);let [cols,i4]=vd(U,i3);i=i4;setMiniColumns(cols);const mc=miniCount();const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date),j);let byteIdx=i,bit=0,cur=U[byteIdx]||0;const gb=()=>{const v=(cur>>bit)&1;bit++;if(bit===8){bit=0;byteIdx++;cur=U[byteIdx]||0}return v};for(let k=0;k<len;k++){const ep=start+k,di=map.get(ep);const hol=gb()?1:0;const arr=new Array(mc).fill(blankCode);for(let m=0;m<mc;m++){const base=gb()|(gb()<<1)|(gb()<<2);const shade=gb()|(gb()<<1)|(gb()<<2)|(gb()<<3);arr[m]=base*10+shade;}if(di!=null){days[di].isHoliday=hol?true:false;days[di].grid=arr;applyDayVisual(di);}}}
+function packLetters(){const out=[];const mc=miniCount();for(let i=0;i<days.length;i++){const L=days[i].letters;if(L.some(x=>x&&x.length)){out.push(...ve(i));for(let k=0;k<mc;k++){const c=L[k]?L[k].charCodeAt(0)&255:0;out.push(c)}}}return new Uint8Array(out)}
+function unpackLetters(U,start){let i=0;const mc=miniCount();const map=new Map();for(let j=0;j<days.length;j++)map.set(epochDays(days[j].date)-start,j);while(i<U.length){let off;[off,i]=vd(U,i);const di=map.get(off);for(let k=0;k<mc;k++){const c=U[i++];if(di!=null){days[di].letters[k]=c?String.fromCharCode(c):'';const mini=dayEls[di].querySelectorAll('.mini')[k];applyMiniLetter(mini,days[di].letters[k])}}}}
+function exportState(){return new Promise(async(res,rej)=>{try{const daysB=packDays();const lettersB=packLetters();const start=epochDays(days[0].date);const barr=[...barriers].sort((a,b)=>a-b).map(p=>p-1);const terms=[...barrierBoxes.entries()].map(([pos,b])=>({o:pos-1,t:b.title||'',c:!!b.closed}));const notes=[...notesBoxes.entries()].map(([id,b])=>{const r=b.el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();return{t:b.title||'',b:b.el.querySelector('.note-content').textContent||'',x:Math.round(r.left-wr.left),y:Math.round(r.top-wr.top),w:Math.round(r.width),h:Math.round(r.height),c:!!b.closed}});const lab={};for(const k in colorLabels){if(colorLabels[k]!==defaultColorLabels[k])lab[k]=colorLabels[k]}const b64days=b64(daysB),b64letters=b64(lettersB),b64bars=btoa(JSON.stringify(barr)),b64terms=btoa(JSON.stringify(terms));let hdr='V1',b64notes;try{if('CompressionStream'in window&&notes.length){const json=JSON.stringify(notes);const cs=new CompressionStream('gzip');const stream=new Blob([json]).stream().pipeThrough(cs);const buf=await new Response(stream).arrayBuffer();b64notes=b64(new Uint8Array(buf));hdr='V1Z'}else{b64notes=btoa(JSON.stringify(notes))}}catch{b64notes=btoa(JSON.stringify(notes))}const out=[hdr,b64days,b64letters,b64bars,b64terms,b64notes,JSON.stringify(lab),JSON.stringify([...lockedMonths]),btoa(plannerTitle)].join('|');res(out)}catch(e){rej(e)}})}
 function clearAll(){
   exitMultiSelect();
   closeAllBoxes();
@@ -469,12 +488,12 @@ async function toggleEaster(){
   monthMap.forEach(indices=>{
     const first=days[indices[0]].weekDay;
     indices.forEach(i=>{
-      const d=days[i]; d.isHoliday=false; d.grid=Array(6).fill(yellowIdx); d.letters=["","","","","",""];
-      const el=dayEls[i]; if(el){el.classList.remove('holiday'); el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,yellowIdx);applyMiniLetter(m,'');});}
+      const d=days[i]; d.isHoliday=false; d.grid=Array(miniCount()).fill(yellowCode); d.letters=Array(miniCount()).fill("");
+      const el=dayEls[i]; if(el){el.classList.remove('holiday'); el.querySelectorAll('.mini').forEach(m=>{applyMiniColor(m,yellowCode);applyMiniLetter(m,'');});}
     });
     function idxAt(r,c){const dayNum=r*7+c-first+1; if(dayNum<1||dayNum>indices.length) return null; return indices[dayNum-1];}
-    [1,5].forEach(c=>{const gi=idxAt(1,c); if(gi!=null){easterCharDays.add(gi); const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
-    [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c); if(gi!=null){easterCharDays.add(gi); const el=dayEls[gi]; days[gi].grid=Array(6).fill(charcoalIdx); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
+    [1,5].forEach(c=>{const gi=idxAt(1,c); if(gi!=null){easterCharDays.add(gi); const el=dayEls[gi]; days[gi].grid=Array(miniCount()).fill(charcoalCode); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalCode));}});
+    [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c); if(gi!=null){easterCharDays.add(gi); const el=dayEls[gi]; days[gi].grid=Array(miniCount()).fill(charcoalCode); if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalCode));}});
   });
   easterMonthMap=monthMap;
 }
@@ -495,13 +514,13 @@ function angerMonth(key){
   const charcoalIdx=COLORS.findIndex(c=>c.key==='charcoal');
   const first=days[indices[0]].weekDay;
   indices.forEach(i=>{
-    const d=days[i];d.isHoliday=false;d.grid=Array(6).fill(redIdx);d.letters=["","","","","",""];
-    const el=dayEls[i];if(el){el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{m.classList.remove('fang');applyMiniColor(m,redIdx);applyMiniLetter(m,'');});}
+    const d=days[i];d.isHoliday=false;d.grid=Array(miniCount()).fill(redIdx*10);d.letters=Array(miniCount()).fill("");
+    const el=dayEls[i];if(el){el.classList.remove('holiday');el.querySelectorAll('.mini').forEach(m=>{m.classList.remove('fang');applyMiniColor(m,redIdx*10);applyMiniLetter(m,'');});}
   });
   function idxAt(r,c){const dayNum=r*7+c-first+1;if(dayNum<1||dayNum>indices.length)return null;return indices[dayNum-1];}
-  [1,5].forEach(c=>{const gi=idxAt(1,c);if(gi!=null){const d=days[gi];d.grid=Array(6).fill(charcoalIdx);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
-  [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c);if(gi!=null){const d=days[gi];d.grid=Array(6).fill(charcoalIdx);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalIdx));}});
-  [2,4].forEach(c=>{const gi=idxAt(3,c);if(gi!=null){const d=days[gi];d.grid=Array(6).fill(blankIndex);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>{m.classList.add('fang');applyMiniColor(m,blankIndex);});}});
+  [1,5].forEach(c=>{const gi=idxAt(1,c);if(gi!=null){const d=days[gi];d.grid=Array(miniCount()).fill(charcoalCode);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalCode));}});
+  [1,2,3,4,5].forEach(c=>{const gi=idxAt(3,c);if(gi!=null){const d=days[gi];d.grid=Array(miniCount()).fill(charcoalCode);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>applyMiniColor(m,charcoalCode));}});
+  [2,4].forEach(c=>{const gi=idxAt(3,c);if(gi!=null){const d=days[gi];d.grid=Array(miniCount()).fill(blankCode);const el=dayEls[gi];if(el)el.querySelectorAll('.mini').forEach(m=>{m.classList.add('fang');applyMiniColor(m,blankCode);});}});
 }
 
 const signature=document.getElementById('signature');if(signature)signature.addEventListener('click',()=>{toggleEaster();});
@@ -523,15 +542,15 @@ document.addEventListener('mousedown',e=>{
 // helper funcs needed by ESC and legends
 function closeAllBoxes(){for(const [,b] of barrierBoxes){if(b.focusOn) clearFocus(); b.el.style.display='none'; b.closed=true;} for(const [,n] of notesBoxes){n.el.style.display='none'; n.closed=true;} if(ieEl)ieEl.style.display='none';}
 function dayInView(i){const el=dayEls[i];return el&&el.offsetParent!==null;}
-function anyMiniColoredOrTyped(onlyVisible=false){const blank=COLORS.findIndex(c=>c.key==='blank'); for(let idx=0;idx<days.length;idx++){if(onlyVisible&&!dayInView(idx))continue;const d=days[idx];if(isMonthLocked(d.year,d.monthIndex))continue;for(let i=0;i<6;i++){if(d.grid[i]!==blank) return true; if(d.letters[i]) return true;}} return false;}
+function anyMiniColoredOrTyped(onlyVisible=false){for(let idx=0;idx<days.length;idx++){if(onlyVisible&&!dayInView(idx))continue;const d=days[idx];if(isMonthLocked(d.year,d.monthIndex))continue;for(let i=0;i<d.grid.length;i++){if(Math.floor(d.grid[i]/10)!==blankIndex) return true; if(d.letters[i]) return true;}} return false;}
 function resetMinisInRange(a,b,onlyVisible=false,skipRecord=false){if(!skipRecord)saveState();
-  const blank=COLORS.findIndex(c=>c.key==='blank');
+  const blank=blankCode;
   for(let i=a;i<=b;i++){
     if(onlyVisible&&!dayInView(i))continue;
     const d=days[i];
     if(isMonthLocked(d.year,d.monthIndex))continue;
-    d.grid=[blank,blank,blank,blank,blank,blank];
-    d.letters=["","","","","",""];
+    d.grid=Array(miniCount()).fill(blank);
+    d.letters=Array(miniCount()).fill("");
     d.isHoliday=false;
     const el=dayEls[i];
     if(el){
@@ -568,6 +587,7 @@ const pdfBtn=document.getElementById('pdfBtn'); if(pdfBtn){pdfBtn.addEventListen
 if(prevMonthBtn)prevMonthBtn.addEventListener('click',showPrevMonth);
 if(nextMonthBtn)nextMonthBtn.addEventListener('click',showNextMonth);
 const globalToggle=document.getElementById('globalToggle');const globalBar=document.getElementById('globalBar');if(globalToggle&&globalBar){globalToggle.addEventListener('click',()=>{const show=!globalBar.classList.contains('open');if(show){globalBar.classList.add('open');}else{globalBar.classList.remove('open');}globalToggle.textContent=show?'Hide global':'Global';syncAllGlimmers();});}
+const colsBtn=document.getElementById('colsBtn');if(colsBtn){colsBtn.addEventListener('click',e=>{const dir=e.shiftKey?-1:1;let c=miniCols+dir;if(c<1)c=1;if(c>5)c=5;if(c!==miniCols){setMiniColumns(c);colsBtn.textContent=`Cols: ${miniCols}`;}});}
 const globalApply=document.getElementById('globalApply');if(globalApply)globalApply.addEventListener('click',applyGlobalTemplate);
 
 // esc logic + typing helper
@@ -576,6 +596,8 @@ window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='t'&&!e.re
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='t')tHeld=false});
 window.addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='l'&&!e.repeat&&!isEditingTarget(e.target))lHeld=true});
 window.addEventListener('keyup',e=>{if(e.key&&e.key.toLowerCase()==='l')lHeld=false});
+window.addEventListener('keydown',e=>{if(!isEditingTarget(e.target)&&/^[0-9]$/.test(e.key)&&!e.repeat)numberHeld=parseInt(e.key,10);});
+window.addEventListener('keyup',e=>{if(/^[0-9]$/.test(e.key))numberHeld=null;});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&e.shiftKey){resetGlobalTemplate();buildGlobalWeek();return}if(e.key!=='Escape')return;if(selectedDays.size){resetSelectedDays();return;} if(activeFocusPos!=null){const {start,end}=segmentFor(activeFocusPos);resetMinisInRange(start,end,true);return} const anyOpenTerms=[...barrierBoxes.values()].some(b=>b.el.style.display!=='none'&&!b.closed); const anyOpenNotes=[...notesBoxes.values()].some(n=>n.el.style.display!=='none'&&!n.closed); const ieOpen=ieEl&&ieEl.style.display!=='none'; if(anyOpenTerms||anyOpenNotes||ieOpen){closeAllBoxes();return} if(anyMiniColoredOrTyped(true)){resetMinisInRange(0,days.length-1,true);return} if(barriersInView()){removeAllBarriers(true);return} if(!anyOpenNotes&&!ieOpen&&!barriersInView()&&!anyMiniColoredOrTyped(true)&&!globalTemplateEmpty()){resetGlobalTemplate();buildGlobalWeek();return}});
 window.addEventListener('keydown',e=>{if(isEditingTarget(e.target))return;if(e.key===','){e.preventDefault();undo();}else if(e.key==='.'){e.preventDefault();redo();}});
 
