@@ -216,17 +216,13 @@ html, body {
 }
 
 #restart {
-  position: fixed;
-  top: 50%;
+  position: absolute;
   left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 4em;
+  bottom: 40px;
+  transform: translateX(-50%);
+  font-size: 6em;
   cursor: pointer;
-  z-index: 500;
-}
-
-#restart.hidden {
-  display: none;
+  z-index: 3000;
 }
 
 #ball {
@@ -257,6 +253,24 @@ html, body {
   box-shadow: 0 0 100px 35px rgba(255,0,0,1);
 }
 
+#ball.blackhole {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle at center, #000 50%, rgba(60,0,90,0.8) 70%);
+  box-shadow: 0 0 80px 30px rgba(80,0,120,0.8);
+  position: absolute;
+  overflow: hidden;
+}
+
+#ball.blackhole::after {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(120,0,180,0.8), rgba(30,0,60,0.8), rgba(120,0,180,0.8));
+  animation: swirl 1s linear infinite;
+}
+
 .trail {
   border-radius: 50%;
   background: radial-gradient(circle, #ffff66, #ffaa00);
@@ -271,6 +285,11 @@ html, body {
 @keyframes trailFade {
   from { opacity: 0.9; }
   to { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+}
+
+@keyframes swirl {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes fire {
@@ -441,6 +460,11 @@ html, body {
   animation: greyPulse 1s ease-in-out 2;
 }
 
+#screenOverlay.purple {
+  background: radial-gradient(circle at center, rgba(40,0,80,0.8), rgba(0,0,0,0.9));
+  animation: shift 8s linear infinite;
+}
+
 @keyframes greyPulse {
   0%,100% { opacity: 0; }
   50% { opacity: 1; }
@@ -448,14 +472,14 @@ html, body {
 
 @keyframes rumble {
   0%,100% { transform: translate(0,0); }
-  20% { transform: translate(-10px,0); }
-  40% { transform: translate(10px,0); }
-  60% { transform: translate(-10px,0); }
-  80% { transform: translate(10px,0); }
+  20% { transform: translate(-15px,-5px); }
+  40% { transform: translate(15px,5px); }
+  60% { transform: translate(-15px,5px); }
+  80% { transform: translate(15px,-5px); }
 }
 
 body.rumble {
-  animation: rumble 0.5s;
+  animation: rumble 0.8s;
 }
 
 @keyframes rumbleStrong {
@@ -560,12 +584,6 @@ body.rumble-strong {
   pointer-events: none;
 }
 
-#endOverlay #restart {
-  position: absolute;
-  bottom: 40px;
-  font-size: 6em;
-  cursor: pointer;
-}
 
 .dark-trail {
   position: fixed;
@@ -612,4 +630,21 @@ body.rumble-strong {
 @keyframes fadeOut {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+.blackhole-anim {
+  position: fixed;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #000 60%, rgba(80,0,120,0.9) 80%);
+  transform: translate(-50%, -50%);
+  z-index: 2500;
+  animation: holeExpand 1.5s forwards;
+}
+
+@keyframes holeExpand {
+  0% { width: 0; height: 0; opacity: 1; }
+  70% { width: 3000px; height: 3000px; opacity: 1; }
+  100% { width: 3000px; height: 3000px; opacity: 0; }
 }

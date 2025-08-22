@@ -75,9 +75,10 @@ const CLIPS = {
     'polygon(100% 100%, 100% 0, 0 100%)'           // bottom-right
   ],
   3: [
-    'polygon(50% 50%, 0 0, 100% 0)',              // top
-    'polygon(50% 50%, 100% 0, 100% 100%)',         // right
-    'polygon(50% 50%, 100% 100%, 0 100%)'          // bottom/left
+    // Y-shaped split from an interior point
+    'polygon(0 0, 0 100%, 66.666% 50%)',                 // left triangle
+    'polygon(0 0, 100% 0, 100% 50%, 66.666% 50%)',       // upper region
+    'polygon(0 100%, 100% 100%, 100% 50%, 66.666% 50%)'  // lower region
   ],
   4: [
     'polygon(50% 50%, 0 0, 100% 0)',              // top
@@ -94,8 +95,8 @@ function initTeams(num) {
   const colors = ['red','blue','green','white'];
   const positions = {
     2: [{x:25, y:25},{x:75, y:75}],
-    3: [{x:50, y:25},{x:75, y:75},{x:25, y:75}],
-    4: [{x:25, y:25},{x:75, y:25},{x:75, y:75},{x:25, y:75}]
+    3: [{x:22, y:50},{x:66.7, y:25},{x:66.7, y:75}],
+    4: [{x:50, y:16.7},{x:83.3, y:50},{x:50, y:83.3},{x:16.7, y:50}]
   };
   for(let i=0;i<num;i++){
     const el = document.createElement('div');
@@ -140,6 +141,20 @@ function teamClicked(i, e){
     moveBall(x, y);
     setTimeout(startTimer, BALL_SPEED);
   };
+
+  if(ball.classList.contains('blackhole')){
+    awaitingTeamSelection = false;
+    moveBall(x, y);
+    setTimeout(() => {
+      blackholeAt(e.clientX, e.clientY, () => {
+        eliminateTeam(i);
+        endRound();
+        if(activeTeams.length === 1) endGame();
+      });
+    }, BALL_SPEED);
+    return;
+  }
+
   if(ball.classList.contains('black') || ball.classList.contains('meteor')){
     stopCursorTrail();
     engulfAt(e.clientX, e.clientY, proceed);
@@ -240,16 +255,21 @@ function moveBall(x, y){
 
 function maybeMutateBall(){
   const r = Math.random();
-  ball.classList.remove('black','meteor');
+  ball.classList.remove('black','meteor','blackhole');
   stopCursorTrail();
-  if(r < 0.025){
+  if(r < 0.0025){
+    flashScreen('purple');
+    setTimeout(() => {
+      ball.classList.add('blackhole');
+    },1000);
+  } else if(r < 0.0275){
     flashScreen('burgundy');
     showMultiplier('x3');
     setTimeout(() => {
       ball.classList.add('meteor');
       startCursorTrail('meteor');
     },1000);
-  } else if(r < 0.105){
+  } else if(r < 0.1075){
     flashScreen('charcoal');
     showMultiplier('x2');
     setTimeout(() => {
@@ -298,6 +318,18 @@ function engulfAt(cx, cy, cb){
     div.classList.add('fade');
     setTimeout(() => { div.remove(); cb(); }, 300);
   }, 600);
+}
+
+function blackholeAt(cx, cy, cb){
+  const div = document.createElement('div');
+  div.className = 'blackhole-anim';
+  div.style.left = cx + 'px';
+  div.style.top = cy + 'px';
+  document.body.appendChild(div);
+  div.addEventListener('animationend', () => {
+    div.remove();
+    cb();
+  });
 }
 
 document.addEventListener('mousemove', (e) => {
