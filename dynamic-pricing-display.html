@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>RienKhmer Membership Tiers</title>
+<style>
+  /* Compatibility-first CSS (no color-mix) */
+  *{box-sizing:border-box}
+  :root{
+    --no:#f2b7b5;         --no-glow:rgba(242,183,181,.45);
+    --restricted:#f6c9a8; --restricted-glow:rgba(246,201,168,.45);
+    --partial:#f3e59f;    --partial-glow:rgba(243,229,159,.45);
+    --normal:#cfe9cf;     --normal-glow:rgba(207,233,207,.45);
+    --beyond:#c7d8f6;     --beyond-glow:rgba(199,216,246,.45);
+
+    --ink:#111827; --muted:#6b7280; --bg:#ffffff; --header-bg:#f8fafc; --table-border:#e5e7eb;
+    --card-bg: rgba(255,255,255,.48); --card-ink: var(--ink);
+    --flash-bg: #e2e8f0; /* light-mode flash color */
+    --radius:12px;
+
+    /* Global shimmer position (driven by JS, px-based for continuous motion) */
+    --shimX: 0px;
+    /* Global rainbow hue (driven by JS) */
+    --rainbowHue: 0;
+  }
+  html[data-theme="dark"]{
+    --bg:#0b0f14; --ink:#e5e7eb; --muted:#94a3b8; --header-bg:#0f172a; --table-border:#1f2937;
+    --card-bg: rgba(17,24,39,.48); --card-ink:#e5e7eb;
+    --flash-bg:#000000; /* darker flash for dark mode */
+  }
+  html{background:var(--bg)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+  .wrap{max-width:1120px;margin:48px auto;padding:0 16px}
+  h1{font-size:clamp(20px,2.4vw,28px);margin:0 0 10px}
+  .subtitle{color:var(--muted);margin:0 0 22px}
+
+  .themeToggle{position:fixed;top:10px;right:14px;border:1px solid var(--table-border);background:var(--header-bg);color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;font-size:13px}
+
+  .table-wrap{overflow:auto;border-radius:var(--radius)}
+  table{min-width:980px;border-collapse:separate;border-spacing:0;width:100%;background:var(--bg);border:1px solid var(--table-border);border-radius:var(--radius);table-layout:fixed}
+  th,td{border-bottom:1px solid var(--table-border);padding:0;vertical-align:top}
+  thead th{position:sticky;top:0;background:var(--header-bg);z-index:5}
+  th:first-child{position:sticky;left:0;background:var(--header-bg);z-index:6}
+
+  /* Keep row header column fixed width */
+  th[aria-label="Features"], .row-hdr{width:260px;min-width:260px;max-width:260px}
+
+  .cell{position:relative;padding:14px 16px;transition:max-height .28s ease,opacity .28s ease,padding .28s ease;max-height:480px;color:var(--ink)}
+  .cell-header{font-weight:700}
+  .subtle{color:var(--muted);font-size:12px;margin-top:4px;display:block}
+
+  /* Price styling */
+  .center{display:flex;gap:6px;align-items:baseline;justify-content:center;text-align:center}
+  .price{font-weight:700;font-size:18px}
+  .price .deal{display:inline-block;font-size:12.5px;font-weight:700}
+  .muted{color:var(--muted)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+
+  /* Hint buttons on their own centered line */
+  .row-hdr .hint,.col-hdr .hint,.stub .hint{font-size:10px;color:var(--muted);display:block;margin-top:6px;text-align:center;cursor:pointer}
+
+  /* Collapsed */
+  td.collapsed .cell{max-height:0;opacity:0;padding:0 16px}
+
+  /* Glow rings */
+  .glow{background:var(--bg);border-radius:10px}
+  .glow.no     {box-shadow:inset 0 0 0 2px var(--no),        0 0 10px 2px var(--no-glow)}
+  .glow.restr  {box-shadow:inset 0 0 0 2px var(--restricted), 0 0 10px 2px var(--restricted-glow)}
+  .glow.part   {box-shadow:inset 0 0 0 2px var(--partial),    0 0 10px 2px var(--partial-glow)}
+  .glow.norm   {box-shadow:inset 0 0 0 2px var(--normal),     0 0 10px 2px var(--normal-glow)}
+  .glow.beyond {box-shadow:inset 0 0 0 2px var(--beyond),     0 0 10px 2px var(--beyond-glow)}
+
+  /* Shimmer (phase-synced & continuous via px-based driver) */
+  .shimmer{position:relative}
+  .shimmer::after{content:"";position:absolute;inset:0;border-radius:10px;
+    background-image:linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.05) 40%, rgba(255,255,255,.65) 50%, rgba(255,255,255,.05) 60%, rgba(255,255,255,0) 100%);
+    background-size:220% 100%;background-position:var(--shimX) 0;pointer-events:none;filter:blur(2px);
+    -webkit-mask-image:linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,.45) 8%, rgba(0,0,0,1) 16%, rgba(0,0,0,1) 84%, rgba(0,0,0,.45) 92%, rgba(0,0,0,0) 100%);
+            mask-image:linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,.45) 8%, rgba(0,0,0,1) 16%, rgba(0,0,0,1) 84%, rgba(0,0,0,.45) 92%, rgba(0,0,0,0) 100%);
+    opacity:1;transition:opacity .18s ease;
+  }
+  .shimmer-paused::after{opacity:0}
+
+  /* Rainbow glow for Rewards mode */
+  .rainbow{position:relative}
+  .rainbow::before{content:"";position:absolute;inset:-2px;border-radius:12px;border:2px solid hsl(var(--rainbowHue), 90%, 60%);
+    box-shadow:0 0 8px hsla(var(--rainbowHue), 90%, 60%, .9),0 0 18px hsla(var(--rainbowHue), 90%, 60%, .45),inset 0 0 0 1px hsla(var(--rainbowHue), 90%, 60%, .2);pointer-events:none}
+
+  /* Narrow hidden columns (dynamic min-width applied inline by JS) */
+  .col-narrow .cell{padding:0 8px}
+
+  /* Floating hover/anchor card */
+  #hoverCard{position:fixed;left:0;top:0;transform:translate(-9999px,-9999px);z-index:99999;min-width:110px;max-width:280px;padding:12px 14px;border-radius:12px;background:var(--card-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(17,24,39,.28),0 0 0 1px rgba(17,24,39,.10);font-size:12px;color:var(--card-ink)}
+  #hoverCard:not(.anchored){pointer-events:none}
+  #hoverCard.anchored{pointer-events:auto;cursor:pointer}
+  #hoverCard .typing{white-space:pre-wrap}
+
+  /* Click flash for headers (works in both themes via vars) */
+  @keyframes flashBG{0%{background-color:var(--header-bg)}50%{background-color:var(--flash-bg)}100%{background-color:var(--header-bg)}}
+  .flash-run{animation:flashBG 260ms ease}
+
+  /* Header titles wrapped for measuring */
+  .col-title{display:inline-block;font-weight:700}
+</style>
+</head>
+<body>
+  <button id="themeToggle" class="themeToggle" aria-pressed="false" title="Toggle theme">🌞 Light</button>
+  <div class="wrap">
+    <h1>RienKhmer Membership Tiers</h1>
+    <p class="subtitle">Hover any item to see a pop‑up that follows the cursor. Click any middle cell to pin the pop‑up; click the pop‑up to dismiss. Use the headers to hide/show rows and columns.</p>
+
+    <div class="table-wrap">
+      <table class="pricing" id="pricing">
+        <thead>
+          <tr>
+            <th class="cell cell-header stub" aria-label="Features"><span id="masterToggle" class="hint">(reveal rewards program)</span></th>
+            <!-- NEW ORDER: Prime, Select, Core, Lite, Executive -->
+            <th class="cell cell-header col-hdr shimmer" data-col="prime" tabindex="0"><span class="col-title">Prime</span><div class="hint" data-role="hint">(hide)</div></th>
+            <th class="cell cell-header col-hdr" data-col="select" tabindex="0"><span class="col-title">Select</span><div class="hint" data-role="hint">(hide)</div></th>
+            <th class="cell cell-header col-hdr" data-col="core" tabindex="0"><span class="col-title">Core</span><div class="hint" data-role="hint">(hide)</div></th>
+            <th class="cell cell-header col-hdr" data-col="lite" tabindex="0"><span class="col-title">Lite</span><div class="hint" data-role="hint">(hide)</div></th>
+            <th class="cell cell-header col-hdr" data-col="exec" tabindex="0"><span class="col-title">Executive</span><br><small class="subtle">TBD</small><div class="hint" data-role="hint">(hide)</div></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- PRICE (special cycling label + dynamic values) -->
+          <tr>
+            <th class="cell row-hdr" data-row="price" scope="row"><span class="row-title" data-rowtitle="price">Current Prices</span><div class="hint" data-role="price-hint">(reveal future prices)</div></th>
+            <td data-row="price" data-col="prime"><div class="cell center shimmer"><span class="price">Coming Soon</span></div></td>
+            <td data-row="price" data-col="select"><div class="cell center"><span class="price">Coming Soon</span></div></td>
+            <td data-row="price" data-col="core"><div class="cell center shimmer" id="core-deal-cell"><span class="price">$1<br><span class="deal">Limited‑Time Launch Deal</span></span></div></td>
+            <td data-row="price" data-col="lite"><div class="cell center"><span class="price">Coming Soon</span></div></td>
+            <td data-row="price" data-col="exec"><div class="cell center"><span class="price">TBD</span></div></td>
+          </tr>
+
+          <!-- Classes -->
+          <tr>
+            <th class="cell row-hdr" data-row="classes" scope="row">Classes<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="classes" data-col="prime"><div class="cell glow beyond shimmer">Unlimited access to all running "Core", "Select", and limited‑edition class sessions</div></td>
+            <td data-row="classes" data-col="select"><div class="cell glow norm">Join 1 "Select" class. 4 "Select" sessions (2hr 15m each)</div></td>
+            <td data-row="classes" data-col="core"><div class="cell glow norm">Choose 1 "Core" class. 8 sessions (1hr 45m each) <span class="mono">= $6.79 /hr</span></div></td>
+            <td data-row="classes" data-col="lite"><div class="cell glow restr">No freedom to choose which class; chosen for you based on availability. Attend 4 of 8 sessions (1hr 45m each), 48hr access to the others <span class="mono">= $5.86 /hr</span></div></td>
+            <td data-row="classes" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- Sessions (NEW row with unique 6-char placeholders) -->
+          <tr>
+            <th class="cell row-hdr" data-row="sessions" scope="row">Sessions<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="sessions" data-col="prime"><div class="cell glow part">A1B2C3</div></td>
+            <td data-row="sessions" data-col="select"><div class="cell glow part">D4E5F6</div></td>
+            <td data-row="sessions" data-col="core"><div class="cell glow part">G7H8I9</div></td>
+            <td data-row="sessions" data-col="lite"><div class="cell glow part">J1K2L3</div></td>
+            <td data-row="sessions" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- KhmerNow -->
+          <tr>
+            <th class="cell row-hdr" data-row="khmernow" scope="row">KhmerNow<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="khmernow" data-col="prime"><div class="cell glow beyond shimmer">Unlimited access to all "Core", "Select", and limited‑edition classes (that have previously run)</div></td>
+            <td data-row="khmernow" data-col="select"><div class="cell glow norm">1 "Core" class of your choice (that has previously run)</div></td>
+            <td data-row="khmernow" data-col="core"><div class="cell glow no">No access</div></td>
+            <td data-row="khmernow" data-col="lite"><div class="cell glow no">No access</div></td>
+            <td data-row="khmernow" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- Guest Policy -->
+          <tr>
+            <th class="cell row-hdr" data-row="guest" scope="row">Guest Policy<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="guest" data-col="prime"><div class="cell glow beyond shimmer">Give free‑range access to up to 2 friends <span class="muted">[Friend package]</span> or 6 family members <span class="muted">[Family package]</span></div></td>
+            <td data-row="guest" data-col="select"><div class="cell glow part">Bring 1 follow‑along guest / Rewards program... &gt; 6mo = 2 follow‑along guests</div></td>
+            <td data-row="guest" data-col="core"><div class="cell glow restr">Not allowed / Rewards program... &gt; 1yr = 1 follow‑along guest</div></td>
+            <td data-row="guest" data-col="lite"><div class="cell glow no">Not allowed</div></td>
+            <td data-row="guest" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- Community Bulletin -->
+          <tr>
+            <th class="cell row-hdr" data-row="bulletin" scope="row">Community Bulletin<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="bulletin" data-col="prime"><div class="cell glow beyond shimmer">Make x10 posts / Lingering rewards... x5 for 6 months, x3 for 1 year</div></td>
+            <td data-row="bulletin" data-col="select"><div class="cell glow norm">Make x3 posts / Rewards program... every 1 month = +1 post... Maximum = x10</div></td>
+            <td data-row="bulletin" data-col="core"><div class="cell glow part">Make x1 post / Rewards program... every 2 months = +1 post... Maximum = x5</div></td>
+            <td data-row="bulletin" data-col="lite"><div class="cell glow restr">View only</div></td>
+            <td data-row="bulletin" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- Concierge Services -->
+          <tr>
+            <th class="cell row-hdr" data-row="concierge" scope="row">Concierge Services<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="concierge" data-col="prime"><div class="cell glow beyond shimmer">Up to 12 hours per month + access to LIVE‑Concierge <span class="muted">(guests can use your hours if you give them permission)</span></div></td>
+            <td data-row="concierge" data-col="select"><div class="cell glow norm">Up to 5 hours per month</div></td>
+            <td data-row="concierge" data-col="core"><div class="cell glow no">No access</div></td>
+            <td data-row="concierge" data-col="lite"><div class="cell glow no">No access</div></td>
+            <td data-row="concierge" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- Side-by-side -->
+          <tr>
+            <th class="cell row-hdr" data-row="side" scope="row">Side‑by‑side<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="side" data-col="prime"><div class="cell glow beyond shimmer">Up to 12 hours per month <span class="muted">(guests can use your hours if you give them permission / guests can also join along)</span></div></td>
+            <td data-row="side" data-col="select"><div class="cell glow norm">Up to 5 hours per month <span class="muted">(guests can join along)</span></div></td>
+            <td data-row="side" data-col="core"><div class="cell glow no">No access</div></td>
+            <td data-row="side" data-col="lite"><div class="cell glow no">No access</div></td>
+            <td data-row="side" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+
+          <!-- Smooth Start -->
+          <tr>
+            <th class="cell row-hdr" data-row="smooth" scope="row">Smooth Start<div class="hint" data-role="hint">(hide)</div></th>
+            <td data-row="smooth" data-col="prime"><div class="cell glow beyond shimmer">Bankable, transferable access to the "Smooth Start" program, valid for 15 days after activation</div></td>
+            <td data-row="smooth" data-col="select"><div class="cell glow no">No access</div></td>
+            <td data-row="smooth" data-col="core"><div class="cell glow no">No access</div></td>
+            <td data-row="smooth" data-col="lite"><div class="cell glow no">No access</div></td>
+            <td data-row="smooth" data-col="exec"><div class="cell">&nbsp;</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Floating hover/anchor card element -->
+  <div id="hoverCard" aria-hidden="true"><span class="typing"></span></div>
+
+<script>
+  (function(){
+    const root = document.documentElement;
+    const themeBtn = document.getElementById('themeToggle');
+    const table = document.getElementById('pricing');
+    const hoverCard = document.getElementById('hoverCard');
+    const typingSpan = hoverCard.querySelector('.typing');
+    const masterToggle = document.getElementById('masterToggle');
+
+    // Theme setup
+    function setTheme(mode){
+      root.setAttribute('data-theme', mode);
+      const dark = mode==='dark';
+      themeBtn.setAttribute('aria-pressed', String(dark));
+      themeBtn.textContent = dark ? '🌙 Dark' : '🌞 Light';
+      localStorage.setItem('theme', mode);
+    }
+    setTheme(localStorage.getItem('theme')||'light');
+    themeBtn.addEventListener('click', ()=>{
+      setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');
+    });
+
+    // Track hidden states for rows/cols
+    const rowHidden = Object.create(null);
+    const colHidden = Object.create(null);
+
+    // Rewards mode flag
+    let rewardsMode = false;
+
+    // Coordinates (A..E / 1..9 now)
+    const colLetters = { prime:'A', select:'B', core:'C', lite:'D', exec:'E' };
+    const rowNumbers = { price:1, classes:2, sessions:3, khmernow:4, guest:5, bulletin:6, concierge:7, side:8, smooth:9 };
+
+    const qsa = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    // Save original plain-text for typing animations (for non-price rows)
+    qsa('tbody tr:not(:first-child) td .cell').forEach(c=>{ c.dataset.full = c.textContent.trim(); });
+
+    // Allowed cells in Rewards mode
+    const rewardsCells = [
+      {row:'bulletin', col:'prime'}, // A6
+      {row:'bulletin', col:'select'}, // B6
+      {row:'bulletin', col:'core'}, // C6
+      {row:'guest', col:'select'}, // B5
+      {row:'guest', col:'core'}, // C5
+      {row:'classes', col:'prime'} // A2
+    ];
+    const rewardsKey = ({row,col})=> row+'|'+col;
+    const rewardsSet = new Set(rewardsCells.map(rewardsKey));
+
+    function applyVisibility(){
+      qsa('tbody td[data-row][data-col]').forEach(td => {
+        const row = td.getAttribute('data-row');
+        const col = td.getAttribute('data-col');
+        let hide;
+        if(rewardsMode){
+          const key = row+'|'+col;
+          hide = (!rewardsSet.has(key)) || !!rowHidden[row] || !!colHidden[col];
+        } else {
+          hide = !!rowHidden[row] || !!colHidden[col];
+        }
+        td.classList.toggle('collapsed', hide);
+        const cellDiv = td.firstElementChild;
+        if(!cellDiv) return;
+        // Toggle rewards rainbow + shimmer
+        const shouldRainbow = rewardsMode && !hide && rewardsSet.has(row+'|'+col);
+        cellDiv.classList.toggle('rainbow', !!shouldRainbow);
+        cellDiv.classList.toggle('shimmer', !!shouldRainbow || (col==='prime' && row!=='price') || (row==='price' && col==='prime') || (row==='price' && col==='core' && priceMode()===0));
+      });
+    }
+
+    // Phase-synced shimmer & rainbow driver (continuous, no backtrace)
+    (function driveFX(){
+      const start = performance.now();
+      function tick(now){
+        const speedPxPerMs = 0.12; // shimmer ≈120px/s
+        const posPx = Math.round((now - start) * speedPxPerMs);
+        root.style.setProperty('--shimX', posPx + 'px');
+        const hue = Math.floor(((now - start) * 0.05) % 360); // rainbow ≈ 18°/s
+        root.style.setProperty('--rainbowHue', String(hue));
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
+
+    // Typing effect with cancellation token (to avoid flicker/races)
+    function typeIn(el, text){
+      const speed = 900; // chars/sec
+      const token = (el._typeToken||0)+1; el._typeToken = token;
+      el.textContent = '';
+      const start = performance.now();
+      function frame(now){
+        if(el._typeToken !== token) return; // cancelled
+        const elapsed = now - start;
+        const chars = Math.min(text.length, Math.floor(elapsed/1000*speed));
+        el.textContent = text.slice(0, chars);
+        if(chars < text.length) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function typeAllVisibleInRow(row){
+      if(row === 'price') return; // never type the price row
+      const cells = qsa('td[data-row="'+row+'"]:not(.collapsed) .cell', table);
+      cells.forEach(c => typeIn(c, c.dataset.full || c.textContent.trim()));
+    }
+    function typeAllVisibleInCol(col){
+      // Only type non-price rows in this column
+      const cells = qsa('td[data-col="'+col+'"][data-row]:not([data-row="price"]):not(.collapsed) .cell', table);
+      cells.forEach(c => typeIn(c, c.dataset.full || c.textContent.trim()));
+    }
+
+    function flashHeader(el){
+      el.classList.remove('flash-run');
+      void el.offsetWidth; // reflow to restart
+      el.classList.add('flash-run');
+    }
+
+    function setRowHidden(row, hide){
+      rowHidden[row] = !!hide;
+      const hdr = table.querySelector('.row-hdr[data-row="'+row+'"];');
+      const hdrHint = hdr && hdr.querySelector('.hint');
+      if(hdr){ flashHeader(hdr); }
+      if(hdrHint) hdrHint.textContent = hide ? '(show)' : '(hide)';
+      applyVisibility();
+      if(!hide) typeAllVisibleInRow(row);
+      updatePriceValues();
+    }
+
+    // Measure header title width and set min width when narrowing
+    function setColWidthToTitle(col, enable){
+      const th = table.querySelector('th.col-hdr[data-col="'+col+'"];');
+      if(!th) return;
+      const title = th.querySelector('.col-title') || th;
+      const rect = title.getBoundingClientRect();
+      const minW = Math.ceil(rect.width + 28); // padding allowance
+      qsa('th.col-hdr[data-col="'+col+'"], td[data-col="'+col+'"]', table).forEach(el=>{
+        if(enable){
+          el.style.minWidth = minW+'px';
+          el.style.width = minW+'px';
+        } else {
+          el.style.minWidth = '';
+          el.style.width = '';
+        }
+      });
+    }
+
+    function setColHidden(col, hide){
+      colHidden[col] = !!hide;
+      const hdr = table.querySelector('.col-hdr[data-col="'+col+'"];');
+      const hdrHint = hdr && hdr.querySelector('.hint');
+      if(hdr){ flashHeader(hdr); }
+      if(hdrHint) hdrHint.textContent = hide ? '(show)' : '(hide)';
+      // Narrow when hidden (but ensure title fully visible)
+      qsa('th.col-hdr[data-col="'+col+'"], td[data-col="'+col+'"]', table).forEach(cell=>{
+        cell.classList.toggle('col-narrow', hide);
+      });
+      setColWidthToTitle(col, hide);
+      // Pause/Resume shimmer for Prime cells only (keep header shimmering)
+      if(col==='prime'){
+        qsa('td[data-col="prime"] .cell', table).forEach(el=>{
+          el.classList.toggle('shimmer-paused', hide);
+        });
+      }
+      applyVisibility();
+      if(!hide) typeAllVisibleInCol(col);
+      updatePriceValues();
+    }
+
+    // Row header handlers (except special price row)
+    qsa('.row-hdr', table).forEach(hdr => {
+      const row = hdr.getAttribute('data-row');
+      if(row === 'price') return; // special logic handled below
+      hdr.addEventListener('click', ()=> setRowHidden(row, !rowHidden[row]));
+      hdr.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setRowHidden(row, !rowHidden[row]); }});
+      hdr.setAttribute('tabindex','0');
+    });
+
+    // PRICE: cycle order Current -> Future -> Next -> Current
+    const PRICE_CURRENT = 0, PRICE_NEXT = 1, PRICE_FUTURE = 2;
+    const priceCycle = [PRICE_CURRENT, PRICE_FUTURE, PRICE_NEXT];
+    let priceIndex = 0;
+    function priceMode(){ return priceCycle[priceIndex]; }
+
+    const priceHdr = table.querySelector('.row-hdr[data-row="price"]');
+    const priceTitle = priceHdr.querySelector('.row-title');
+    const priceHint = priceHdr.querySelector('[data-role="price-hint"]');
+    const priceSpans = {
+      prime: table.querySelector('td[data-row="price"][data-col="prime"] .price'),
+      select: table.querySelector('td[data-row="price"][data-col="select"] .price'),
+      core: table.querySelector('td[data-row="price"][data-col="core"] .price'),
+      lite: table.querySelector('td[data-row="price"][data-col="lite"] .price'),
+      exec: table.querySelector('td[data-row="price"][data-col="exec"] .price')
+    };
+    const priceSets = {
+      [PRICE_CURRENT]: { prime:'Coming Soon', select:'Coming Soon', core:'$1<br><span class="deal">Limited‑Time Launch Deal</span>', lite:'Coming Soon', exec:'TBD' },
+      [PRICE_NEXT]:    { prime:'$350', select:'$170', core:'$95',   lite:'$81.97', exec:'TBD' },
+      [PRICE_FUTURE]:  { prime:'$450', select:'$225', core:'$125',  lite:'$98.26', exec:'TBD' }
+    };
+    function updatePriceLabel(){
+      const mode = priceMode();
+      if(mode===PRICE_CURRENT){ priceTitle.textContent='Current Prices'; priceHint.textContent='(reveal future prices)'; }
+      else if(mode===PRICE_FUTURE){ priceTitle.textContent='Future Prices'; priceHint.textContent='(show next term\'s prices)'; }
+      else { priceTitle.textContent="Next Term\'s Prices"; priceHint.textContent='(show current prices)'; }
+    }
+    function updatePriceValues(){
+      const set = priceSets[priceMode()];
+      ['prime','select','lite','exec'].forEach(key=>{
+        const span = priceSpans[key]; if(!span) return; span.innerHTML = set[key];
+      });
+      const coreSpan = priceSpans.core; const coreCell = document.getElementById('core-deal-cell');
+      if(coreSpan){ coreSpan.innerHTML = set.core; }
+      if(coreCell){ coreCell.classList.toggle('shimmer', priceMode()===PRICE_CURRENT); }
+    }
+    function cyclePrices(){ priceIndex = (priceIndex+1)%priceCycle.length; updatePriceLabel(); updatePriceValues(); }
+    priceHdr.addEventListener('click', ()=>{ flashHeader(priceHdr); cyclePrices(); });
+    priceHdr.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); cyclePrices(); }});
+    priceHdr.setAttribute('tabindex','0');
+    updatePriceLabel(); updatePriceValues();
+
+    // Column header handlers with flash
+    qsa('.col-hdr', table).forEach(hdr => {
+      const col = hdr.getAttribute('data-col');
+      hdr.addEventListener('click', ()=> setColHidden(col, !colHidden[col]));
+      hdr.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setColHidden(col, !colHidden[col]); }});
+    });
+
+    // Hover/anchor tooltip logic
+    let anchored = false;
+    let lastHoverEl = null;
+
+    function positionCard(x, y){
+      const pad = 14; // offset from cursor/click
+      let left = x + pad;
+      let top = y + pad;
+      const rect = hoverCard.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      if(left + rect.width + 20 > vw){ left = Math.max(8, vw - rect.width - 12); }
+      if(top + rect.height + 20 > vh){ top = Math.max(8, vh - rect.height - 12); }
+      hoverCard.style.transform = `translate(${left}px, ${top}px)`;
+    }
+
+    function labelFor(el){
+      if(!el) return '';
+      if(el.matches('td[data-row][data-col]')){
+        const row = el.getAttribute('data-row');
+        const col = el.getAttribute('data-col');
+        const A = colLetters[col] || '?';
+        const N = rowNumbers[row] || '?';
+        return `${A}${N}`;
+      }
+      if(el.matches('th.row-hdr[data-row]')){
+        const row = el.getAttribute('data-row');
+        const N = rowNumbers[row] || '?';
+        return `Row ${N}`;
+      }
+      if(el.matches('th.col-hdr[data-col]')){
+        const col = el.getAttribute('data-col');
+        const A = colLetters[col] || '?';
+        return `Column ${A}`;
+      }
+      return '';
+    }
+
+    function showCard(text, x, y, isAnchor){
+      typingSpan.textContent='';
+      hoverCard.classList.toggle('anchored', !!isAnchor);
+      hoverCard.removeAttribute('aria-hidden');
+      positionCard(x, y);
+      typeIn(typingSpan, text);
+    }
+
+    function hideCard(){
+      hoverCard.setAttribute('aria-hidden','true');
+      hoverCard.style.transform='translate(-9999px,-9999px)';
+      hoverCard.classList.remove('anchored');
+    }
+
+    // Mouse move follows cursor (if not anchored)
+    table.addEventListener('mousemove', (e)=>{
+      if(anchored) return; // disabled when anchored
+      const cell = e.target.closest('td[data-row][data-col], th.row-hdr[data-row], th.col-hdr[data-col]');
+      if(!cell){ hideCard(); lastHoverEl=null; return; }
+      if(cell !== lastHoverEl){
+        lastHoverEl = cell;
+        showCard(labelFor(cell), e.clientX, e.clientY, false);
+      } else {
+        positionCard(e.clientX, e.clientY);
+      }
+    });
+    table.addEventListener('mouseleave', ()=>{ if(!anchored){ hideCard(); lastHoverEl=null; }});
+
+    // Click to anchor the card — ONLY for middle cells (td), not headers
+    table.addEventListener('click', (e)=>{
+      const targetCell = e.target.closest('td[data-row][data-col]');
+      if(!targetCell) return; // ignore header clicks for anchoring
+      if(targetCell.classList.contains('collapsed')) return; // only visible cells
+      const text = labelFor(targetCell);
+      anchored = true;
+      showCard(text, e.clientX, e.clientY, true);
+    });
+
+    // Click the anchored card to dismiss
+    hoverCard.addEventListener('click', ()=>{ anchored=false; hideCard(); lastHoverEl=null; });
+
+    // MASTER TOGGLE (Rewards Mode)
+    masterToggle.addEventListener('click', ()=>{
+      rewardsMode = !rewardsMode;
+      masterToggle.textContent = rewardsMode ? '(show "RienKhmer" membership tiers)' : '(reveal rewards program)';
+      // Ensure visibility updates (override hide/show in rewards mode)
+      applyVisibility();
+      // Update prices when returning to normal
+      if(!rewardsMode) updatePriceValues();
+    });
+
+    // Initial render
+    applyVisibility();
+  })();
+</script>
+</body>
+</html>
