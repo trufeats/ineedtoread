@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Picker</title>
+<style>
+/* Basic layout and typography */
+body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#fafafa;transition:background 0.3s;}
+button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius:4px;transition:background 0.3s;}
+button:hover{background:#eee;}
+#pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
+#result{font-size:2rem;margin-top:20px;min-height:2.5rem;}
+
+/* Top buttons */
+.top-btn{position:fixed;top:10px;background:transparent;border:none;font-size:1.5rem;}
+#dataToggle{left:10px;}
+#settingsToggle{right:10px;}
+
+/* Popups */
+.popup{position:fixed;background:#fff;border:1px solid #ccc;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.2);padding:0;}
+.popup.hidden{display:none;}
+.popup-header{background:#f0f0f0;padding:5px 10px;cursor:move;display:flex;justify-content:space-between;align-items:center;border-top-left-radius:6px;border-top-right-radius:6px;}
+.popup-header span{cursor:pointer;}
+.popup-content{padding:10px;}
+#dataArea{width:250px;height:120px;}
+.popup-actions{display:flex;gap:10px;margin-top:10px;}
+
+/* Overlays */
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;}
+.overlay.hidden{display:none;}
+.overlay .content{background:#fff;border-radius:8px;padding:20px;min-width:260px;max-height:90%;overflow:auto;position:relative;}
+.overlay .content .close{position:absolute;top:10px;right:10px;cursor:pointer;}
+
+/* Settings layout */
+#settingsBox label{display:block;margin:10px 0 5px;}
+
+/* Student list overlay */
+#studentOverlay .columns{display:flex;gap:20px;}
+#studentOverlay .column{min-width:150px;}
+#studentOverlay .column.unknown{font-size:0.9rem;text-align:center;}
+#studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;}
+#studentOverlay .name:hover{background:#eee;}
+#studentInput{width:100%;margin-top:10px;padding:8px;}
+
+/* End overlay */
+#endOverlay .content{background:#fff;padding:40px;border-radius:8px;text-align:center;}
+
+</style>
+</head>
+<body>
+<button id="dataToggle" class="top-btn">☰</button>
+<button id="settingsToggle" class="top-btn">⚙️</button>
+<div id="result"></div>
+<button id="pickBtn">Pick Student</button>
+
+<!-- Import/Export Popup -->
+<div id="dataBox" class="popup hidden" style="top:60px;left:20px;">
+  <div class="popup-header" id="dataHeader">Data <span id="dataClose">✖</span></div>
+  <div class="popup-content">
+    <textarea id="dataArea" placeholder="Paste data here"></textarea>
+    <div class="popup-actions">
+      <button id="importBtn">Import</button>
+      <button id="exportBtn">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Overlay -->
+<div id="settingsBox" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="settingsClose">✖</span>
+    <h2>Settings</h2>
+    <label>Gender</label>
+    <select id="genderSetting">
+      <option value="r">Random</option>
+      <option value="m">Male</option>
+      <option value="f">Female</option>
+    </select>
+    <label>Selection Mode</label>
+    <select id="modeSetting">
+      <option value="random">True Random</option>
+      <option value="noRecent">No last 3 picks</option>
+      <option value="noRepeat">No repeats</option>
+    </select>
+    <label>Count</label>
+    <select id="countSetting">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </div>
+</div>
+
+<!-- Student Overlay -->
+<div id="studentOverlay" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="studentClose">✖</span>
+    <div class="columns">
+      <div id="maleList" class="column"></div>
+      <div id="unknownList" class="column unknown"></div>
+      <div id="femaleList" class="column"></div>
+    </div>
+    <input id="studentInput" placeholder="Type name and press Enter"/>
+  </div>
+</div>
+
+<!-- End Overlay -->
+<div id="endOverlay" class="overlay hidden">
+  <div class="content">
+    <h2>All students have been picked!</h2>
+    <button id="resetBtn">Reset</button>
+  </div>
+</div>
+
+<script>
+// Data structures
+let students=[]; // {name, gender}
+let settings={gender:'r', mode:'random', count:1};
+let history=[]; // array of arrays
+let historyIndex=-1;
+let recent=[]; // last picks for noRecent
+let remaining=[]; // for noRepeat mode
+let modifier=null; // for student overlay
+
+const result=document.getElementById('result');
+const pickBtn=document.getElementById('pickBtn');
+const genderSetting=document.getElementById('genderSetting');
+const modeSetting=document.getElementById('modeSetting');
+const countSetting=document.getElementById('countSetting');
+
+// Import/Export popup
+const dataBox=document.getElementById('dataBox');
+const dataToggle=document.getElementById('dataToggle');
+const dataClose=document.getElementById('dataClose');
+const importBtn=document.getElementById('importBtn');
+const exportBtn=document.getElementById('exportBtn');
+const dataArea=document.getElementById('dataArea');
+const dataHeader=document.getElementById('dataHeader');
+let dragOffset={x:0,y:0};
+let dragging=false;
+
+// Settings overlay
+const settingsBox=document.getElementById('settingsBox');
+const settingsToggle=document.getElementById('settingsToggle');
+const settingsClose=document.getElementById('settingsClose');
+
+// Student overlay
+const studentOverlay=document.getElementById('studentOverlay');
+const studentClose=document.getElementById('studentClose');
+const maleList=document.getElementById('maleList');
+const femaleList=document.getElementById('femaleList');
+const unknownList=document.getElementById('unknownList');
+const studentInput=document.getElementById('studentInput');
+
+// End overlay
+const endOverlay=document.getElementById('endOverlay');
+const resetBtn=document.getElementById('resetBtn');
+
+function toggle(el){el.classList.toggle('hidden');}
+
+// Dragging for data box
+dataHeader.addEventListener('mousedown',e=>{dragging=true;dragOffset.x=e.offsetX;dragOffset.y=e.offsetY;});
+document.addEventListener('mousemove',e=>{if(dragging){dataBox.style.left=(e.pageX-dragOffset.x)+'px';dataBox.style.top=(e.pageY-dragOffset.y)+'px';}});
+document.addEventListener('mouseup',()=>dragging=false);
+
+// Import / Export
+dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
+dataClose.addEventListener('click',()=>dataBox.classList.add('hidden'));
+importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr;renderStudents();history=[];recent=[];remaining=[];result.textContent='';}}catch(e){alert('Invalid data');}});
+exportBtn.addEventListener('click',()=>{dataArea.value=JSON.stringify(students);dataArea.select();document.execCommand('copy');});
+
+// Settings controls
+settingsToggle.addEventListener('click',()=>toggle(settingsBox));
+settingsClose.addEventListener('click',()=>settingsBox.classList.add('hidden'));
+
+genderSetting.addEventListener('change',()=>settings.gender=genderSetting.value);
+modeSetting.addEventListener('change',()=>{settings.mode=modeSetting.value;if(settings.mode==='noRepeat'){remaining=students.slice();}});
+countSetting.addEventListener('change',()=>settings.count=parseInt(countSetting.value));
+
+// Student overlay functions
+function renderStudents(){
+  const males=students.filter(s=>s.gender==='m').sort((a,b)=>a.name.localeCompare(b.name));
+  const females=students.filter(s=>s.gender==='f').sort((a,b)=>a.name.localeCompare(b.name));
+  const unknowns=students.filter(s=>s.gender==='u').sort((a,b)=>a.name.localeCompare(b.name));
+  maleList.innerHTML=males.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
+  femaleList.innerHTML=females.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
+  unknownList.innerHTML=unknowns.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
+  remaining=students.slice();
+}
+
+studentInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && studentInput.value.trim()){
+    students.push({name:studentInput.value.trim(),gender:'u'});studentInput.value='';renderStudents();
+  }
+});
+
+studentOverlay.addEventListener('click',e=>{
+  const target=e.target;
+  if(target.classList.contains('name')){
+    const name=target.dataset.name;
+    const idx=students.findIndex(s=>s.name===name);
+    if(modifier==='f') students[idx].gender='f';
+    else if(modifier==='m') students[idx].gender='m';
+    else students.splice(idx,1);
+    renderStudents();
+  }
+});
+
+studentClose.addEventListener('click',()=>studentOverlay.classList.add('hidden'));
+
+// Modifier keys for student overlay
+let overlayOpen=false;
+studentOverlay.addEventListener('keydown',e=>{
+  if(e.key==='f'||e.key==='m') modifier=e.key;
+});
+studentOverlay.addEventListener('keyup',e=>{
+  if(e.key==='f'||e.key==='m') modifier=null;
+});
+
+// Show overlays via keys
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
+  if(e.key==='q'){toggle(settingsBox);} 
+  else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');overlayOpen=true;}
+  else if(e.key===','){if(history.length){historyIndex=Math.max(0,historyIndex-1);result.textContent=history[historyIndex].join(', ');}}
+  else if(e.key==='.') {if(history.length){historyIndex=Math.min(history.length-1,historyIndex+1);result.textContent=history[historyIndex].join(', ');}}
+  else if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');}
+  else if(['m','f','r','1','2','3'].includes(e.key) && settingsBox.classList.contains('hidden') && studentOverlay.classList.contains('hidden')){
+    if(e.key==='m') performPick('m',null);
+    if(e.key==='f') performPick('f',null);
+    if(e.key==='r') performPick('r',null);
+    if(e.key==='1') performPick(null,1);
+    if(e.key==='2') performPick(null,2);
+    if(e.key==='3') performPick(null,3);
+  }
+});
+
+pickBtn.addEventListener('click',()=>performPick());
+
+function performPick(tempGender=null,tempCount=null){
+  if(!students.length){result.textContent='No students';return;}
+  let gender=tempGender||settings.gender; 
+  let count=tempCount||settings.count;
+  let pool=students.filter(s=>{
+    if(gender==='m') return s.gender==='m';
+    if(gender==='f') return s.gender==='f';
+    return true;
+  });
+  if(settings.mode==='noRecent'){
+    pool=pool.filter(s=>!recent.includes(s.name));
+    if(!pool.length) pool=students.filter(s=>{
+      if(gender==='m') return s.gender==='m';
+      if(gender==='f') return s.gender==='f';
+      return true;
+    });
+  }
+  if(settings.mode==='noRepeat'){
+    if(!remaining.length) {endOverlay.classList.remove('hidden');return;}
+    pool=remaining.filter(s=>{
+      if(gender==='m') return s.gender==='m';
+      if(gender==='f') return s.gender==='f';
+      return true;
+    });
+    if(!pool.length){result.textContent='No matching students';return;}
+  }
+  if(!pool.length){result.textContent='No matching students';return;}
+  let pick=[]; let tempPool=pool.slice();
+  for(let i=0;i<count && tempPool.length;i++){
+    const idx=Math.floor(Math.random()*tempPool.length);
+    pick.push(tempPool.splice(idx,1)[0]);
+  }
+  result.textContent=pick.map(s=>s.name).join(', ');
+  history.push(pick.map(s=>s.name));
+  historyIndex=history.length-1;
+  recent=recent.concat(pick.map(s=>s.name)).slice(-3);
+  if(settings.mode==='noRepeat'){
+    remaining=remaining.filter(s=>!pick.includes(s));
+    if(!remaining.length) endOverlay.classList.remove('hidden');
+  }
+}
+
+resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');});
+
+// Close with Esc for student overlay
+studentOverlay.addEventListener('keydown',e=>{if(e.key==='Escape') studentOverlay.classList.add('hidden');});
+</script>
+</body>
+</html>
