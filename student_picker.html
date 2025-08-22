@@ -9,8 +9,8 @@ body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:colu
 button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius:4px;transition:background 0.3s;}
 button:hover{background:#eee;}
 #pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
-#result{margin-top:20px;min-height:2.5rem;}
-#result .picked{font-size:3rem;animation:pop 0.6s ease forwards;opacity:0;}
+#result{margin-top:20px;min-height:6rem;}
+#result .picked{font-size:6rem;animation:pop 0.6s ease forwards;opacity:0;}
 #countdown{margin-top:10px;font-size:1.2rem;}
 
 /* Top buttons */
@@ -39,7 +39,7 @@ button:hover{background:#eee;}
 /* Student list overlay */
 #studentOverlay .columns{display:flex;gap:20px;}
 #studentOverlay .column{min-width:150px;}
-#studentOverlay .column.male .name{font-size:4.8rem;background:rgba(38,66,139,0.2);position:relative;overflow:hidden;}
+#studentOverlay .column.male .name{font-size:4.8rem;background:rgba(30,144,255,0.2);position:relative;overflow:hidden;}
 #studentOverlay .column.female .name{font-size:4.8rem;background:rgba(255,0,255,0.2);position:relative;overflow:hidden;}
 #studentOverlay .column.unknown{font-size:0.9rem;text-align:center;}
 #studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
@@ -55,12 +55,14 @@ button:hover{background:#eee;}
 #infoBox li{margin:5px 0;}
 
 /* Animations */
-@keyframes shine{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+@keyframes shine{from{left:-100%;}to{left:100%;}}
 @keyframes pop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
 @keyframes cosmic{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 
 #studentOverlay .column.male .name::after,
-#studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 4s linear infinite;}
+#studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 8s linear infinite;}
+#studentOverlay .name.used{color:#777;text-decoration:line-through;}
+#studentOverlay .name.used::after{display:none;}
 
 </style>
 </head>
@@ -209,6 +211,7 @@ function softReset(){
   endOverlay.classList.add('hidden');
   countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';
   forcedQueue=[];
+  markUsed();
 }
 
 function hardReset(){
@@ -226,7 +229,7 @@ document.addEventListener('mouseup',()=>dragging=false);
 dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
 dataClose.addEventListener('mousedown',e=>e.stopPropagation());
 dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
-importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr;renderStudents();history=[];recent=[];remaining=[];result.textContent='';}}catch(e){alert('Invalid data');}});
+importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr;renderStudents();softReset();dataBox.classList.add('hidden');}}catch(e){alert('Invalid data');}});
 exportBtn.addEventListener('click',()=>{dataArea.value=JSON.stringify(students);dataArea.select();document.execCommand('copy');});
 
 // Settings controls
@@ -242,10 +245,22 @@ modeSetting.addEventListener('change',()=>{
   }else{
     countdown.textContent='';
   }
+  markUsed();
 });
 countSetting.addEventListener('change',()=>settings.count=parseInt(countSetting.value));
 
 // Student overlay functions
+function markUsed(){
+  document.querySelectorAll('#studentOverlay .name').forEach(el=>{
+    const exists=remaining.some(s=>s.name===el.dataset.name);
+    if(settings.mode==='noRepeat' && !exists){
+      el.classList.add('used');
+    }else{
+      el.classList.remove('used');
+    }
+  });
+}
+
 function renderStudents(){
   const males=students.filter(s=>s.gender==='m').sort((a,b)=>a.name.localeCompare(b.name));
   const females=students.filter(s=>s.gender==='f').sort((a,b)=>a.name.localeCompare(b.name));
@@ -254,6 +269,7 @@ function renderStudents(){
   femaleList.innerHTML=females.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
   unknownList.innerHTML=unknowns.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
   remaining=students.slice();
+  markUsed();
 }
 
 studentInput.addEventListener('keydown',e=>{
@@ -359,11 +375,12 @@ function performPick(tempGender=null,tempCount=null){
   if(settings.mode==='noRepeat'){
     remaining=remaining.filter(s=>!pick.includes(s));
     countdown.textContent=`Remaining: ${remaining.length}`;
+    markUsed();
     if(!remaining.length) endOverlay.classList.remove('hidden');
   }
 }
 
-resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';});
+resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';markUsed();});
 </script>
 </body>
 </html>
