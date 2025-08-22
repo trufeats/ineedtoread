@@ -7,10 +7,9 @@ const xBtn = document.getElementById('xBtn');
 const timerEl = document.getElementById('timer');
 const timerSection = document.getElementById('timerSection');
 const restartBtn = document.getElementById('restart');
-const resizeBtn = document.getElementById('resizeTimer');
-const wordInput = document.getElementById('wordInput');
+const resizeHandle = document.getElementById('resizeTimer');
+const timeDisplay = document.getElementById('timeDisplay');
 const wordLog = document.getElementById('wordLog');
-const toggleLog = document.getElementById('toggleLog');
 const quickOverlay = document.getElementById('quickOverlay');
 const quickInput = document.getElementById('quickInput');
 const searchOverlay = document.getElementById('searchOverlay');
@@ -62,6 +61,11 @@ function initTeams(num) {
   gameArea.innerHTML = '';
   const colors = ['red','blue','green','white'];
   const elements = ['fire','water','earth','air'];
+  const positions = {
+    2: [{x:33, y:33},{x:66, y:66}],
+    3: [{x:50, y:17},{x:17, y:50},{x:83, y:50}],
+    4: [{x:17, y:50},{x:50, y:17},{x:83, y:50},{x:50, y:83}]
+  };
   for(let i=0;i<num;i++){
     const el = document.createElement('div');
     el.className = 'team ' + colors[i];
@@ -76,9 +80,14 @@ function initTeams(num) {
     const score = document.createElement('div');
     score.className = 'score';
     score.textContent = '0';
-    el.appendChild(score);
     const mark = document.createElement('div');
     mark.className = 'watermark ' + elements[i];
+    const pos = positions[num][i];
+    score.style.left = pos.x + '%';
+    score.style.top = pos.y + '%';
+    mark.style.left = pos.x + '%';
+    mark.style.top = pos.y + '%';
+    el.appendChild(score);
     el.appendChild(mark);
     el.addEventListener('click', (e) => teamClicked(i, e));
     gameArea.appendChild(el);
@@ -220,7 +229,7 @@ function tick(){
 }
 
 function updateTimer(){
-  timerEl.textContent = remainingTime;
+  timeDisplay.textContent = remainingTime;
 }
 
 function stopTimer(){
@@ -245,6 +254,7 @@ function resumeTimer(){
 }
 
 timerEl.addEventListener('click', (e) => {
+  if(e.target === resizeHandle) return;
   if(e.shiftKey){
     remainingTime++;
     updateTimer();
@@ -269,20 +279,6 @@ document.querySelectorAll('.time-set').forEach(btn => {
   });
 });
 
-wordInput.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter'){
-    const val = wordInput.value.trim();
-    if(val){
-      addWord(val);
-      wordInput.value = '';
-    }
-  }
-});
-
-toggleLog.addEventListener('click', () => {
-  wordLog.classList.toggle('minimized');
-  toggleLog.textContent = wordLog.classList.contains('minimized') ? '+' : '–';
-});
 
 function addWord(word){
   const span = document.createElement('span');
@@ -313,35 +309,38 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if(isTyping()) return;
-  if(e.key === 'x'){
+  const key = e.key.toLowerCase();
+  if(key === 'x'){
     dragKeyDown = true;
-  } else if(e.key === 'z'){
+  } else if(key === 'z'){
     resetHud();
   }
 });
 
 document.addEventListener('keydown', (e) => {
   if(isTyping()) return;
-  if(e.key === ' '){
+  const key = e.key.toLowerCase();
+  if(key === ' '){
     e.preventDefault();
     if(quickOverlay.classList.contains('hidden')) openQuick();
-  } else if(e.key === 's'){
+  } else if(key === 's'){
     e.preventDefault();
     if(searchOverlay.classList.contains('hidden')) openSearch();
-  } else if(e.key === 'a'){
+  } else if(key === 'a'){
     e.preventDefault();
     checkBtn.click();
-  } else if(e.key === 'd'){
+  } else if(key === 'd'){
     e.preventDefault();
     xBtn.click();
-  } else if(e.key === 'i'){
+  } else if(key === 'i'){
     e.preventDefault();
     if(infoOverlay.classList.contains('hidden')) openInfo();
+    else closeInfo();
   }
 });
 
 document.addEventListener('keyup', (e) => {
-  if(e.key === 'x'){
+  if(e.key.toLowerCase() === 'x'){
     dragKeyDown = false;
   }
 });
@@ -471,8 +470,29 @@ function closeInfo(){
 
 infoClose.addEventListener('click', closeInfo);
 
-resizeBtn.addEventListener('click', () => {
-  timerEl.classList.toggle('large');
+let resizing = false;
+let startX = 0;
+let startSize = 0;
+
+resizeHandle.addEventListener('mousedown', (e) => {
+  resizing = true;
+  startX = e.clientX;
+  startSize = timerEl.offsetWidth;
+  e.preventDefault();
+  e.stopPropagation();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if(resizing){
+    const newSize = Math.max(60, startSize + e.clientX - startX);
+    timerEl.style.width = newSize + 'px';
+    timerEl.style.height = newSize + 'px';
+    timerEl.style.fontSize = (newSize * 0.6) + 'px';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  resizing = false;
 });
 
 function spawnRain(container){

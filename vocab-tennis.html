@@ -19,19 +19,13 @@
 
 <div id="topic" contenteditable="true">Topic</div>
 <div id="timerSection">
-  <div id="timer">30</div>
-  <button id="resizeTimer">⇲</button>
+  <div id="timer"><span id="timeDisplay">30</span><div id="resizeTimer"></div></div>
   <div id="timeControls">
     <button class="time-set" data-time="30">30s</button>
     <button class="time-set" data-time="20">20s</button>
     <button class="time-set" data-time="10">10s</button>
     <button class="time-set" data-time="5">5s</button>
   </div>
-  <div id="wordInputContainer">
-    <input type="text" id="wordInput" placeholder="Enter word and press Enter">
-    <button id="toggleLog">–</button>
-  </div>
-  <div id="wordLog"></div>
 </div>
 
 <div id="gameArea"></div>
@@ -60,7 +54,7 @@
     <li><strong>S</strong> – search words</li>
     <li><strong>A</strong> – award point</li>
     <li><strong>D</strong> – eliminate team</li>
-    <li><strong>X + drag</strong> – move timer/word panel</li>
+    <li><strong>X + drag</strong> – move timer</li>
     <li><strong>Z</strong> – reset panel position</li>
     <li><strong>,</strong> – undo word</li>
     <li><strong>.</strong> – redo word</li>
@@ -69,6 +63,7 @@
 </div>
 
 <div id="screenOverlay"></div>
+<div id="wordLog" class="hidden"></div>
 
 <script src="js/vocab-tennis.js"></script>
 </body>

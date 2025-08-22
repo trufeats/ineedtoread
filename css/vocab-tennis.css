@@ -68,6 +68,7 @@ html, body {
 }
 
 #timer {
+  position: relative;
   width: 100px;
   height: 100px;
   border: 8px solid #fff;
@@ -80,23 +81,15 @@ html, body {
   transition: transform 0.3s;
 }
 
-#timer.large {
-  width: 150px;
-  height: 150px;
-  font-size: 3.5em;
-}
-
 #resizeTimer {
-  margin-top: 5px;
-  border: none;
-  border-radius: 6px;
-  padding: 2px 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-#resizeTimer:hover {
-  background: rgba(255,255,255,0.2);
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  width: 15px;
+  height: 15px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 3px;
+  cursor: se-resize;
 }
 
 #timer:active {
@@ -121,39 +114,6 @@ html, body {
   background: rgba(255,255,255,0.2);
 }
 
-#wordInputContainer {
-  margin-top: 5px;
-  display: flex;
-}
-
-#wordInput {
-  flex: 1;
-}
-
-#toggleLog {
-  margin-left: 5px;
-}
-
-#wordLog {
-  margin-top: 5px;
-  background: rgba(54,69,79,0.8);
-  padding: 5px;
-  max-height: 150px;
-  overflow-y: auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  font-size: 0.8em;
-  transition: max-height 0.3s;
-}
-
-#wordLog.minimized {
-  display: none;
-}
-
-.word {
-  cursor: pointer;
-}
 
 #gameArea {
   position: relative;
@@ -209,44 +169,6 @@ html, body {
 .team.blue { background-image: linear-gradient(-45deg, #4d4dff, #0000ff, #000099, #4d4dff); }
 .team.green { background-image: linear-gradient(-45deg, #4dff4d, #00cc00, #006600, #4dff4d); }
 .team.white { background-image: linear-gradient(-45deg, #ffffff, #eeeeee, #cccccc, #ffffff); color: #000; }
-.team.white::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  background: conic-gradient(from 0deg, rgba(255,255,255,0.2), rgba(150,150,150,0.3), rgba(200,200,200,0.2));
-  mix-blend-mode: overlay;
-  animation: whiteSpin 8s linear infinite, whitePulse 6s ease-in-out infinite;
-  pointer-events: none;
-  clip-path: inherit;
-}
-.team.white::after {
-  content: '';
-  position: absolute;
-  inset: -50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), transparent 60%),
-              radial-gradient(circle at 70% 70%, rgba(180,180,180,0.4), transparent 60%),
-              radial-gradient(circle at 40% 60%, rgba(120,120,120,0.5), transparent 60%);
-  animation: whiteOrbs 12s linear infinite, whitePulse 6s ease-in-out infinite, whiteSpin 20s linear infinite reverse;
-  mix-blend-mode: screen;
-  pointer-events: none;
-  clip-path: inherit;
-}
-
-@keyframes whiteOrbs {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.2); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes whitePulse {
-  0%,100% { opacity: 0.6; filter: blur(0); }
-  50% { opacity: 1; filter: blur(2px); }
-}
-
-@keyframes whiteSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 @keyframes colorShift {
   0% { filter: hue-rotate(0deg) brightness(1); }
@@ -365,31 +287,24 @@ html, body {
   position: absolute;
   font-size: 2em;
   z-index: 300;
-  top: 50%;
-  left: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
 .watermark {
   position: absolute;
-  inset: 0;
+  width: 80px;
+  height: 80px;
+  border: 4px solid currentColor;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8em;
-  opacity: 0.15;
+  font-size: 2em;
+  opacity: 0.3;
   pointer-events: none;
   z-index: 100;
-}
-
-.watermark::before {
-  content: '';
-  position: absolute;
-  width: 60%;
-  height: 60%;
-  border: 8px solid currentColor;
-  border-radius: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .watermark.fire::after { content: '\1F525'; }
@@ -397,10 +312,10 @@ html, body {
 .watermark.earth::after { content: '\26F0'; }
 .watermark.air::after { content: '\1F4A8'; }
 
-.team.red .watermark { color: rgba(255,80,0,0.4); }
-.team.blue .watermark { color: rgba(0,150,255,0.4); }
-.team.green .watermark { color: rgba(0,150,0,0.4); }
-.team.white .watermark { color: rgba(200,200,200,0.4); }
+.team.red .watermark { color: rgba(255,80,0,0.7); }
+.team.blue .watermark { color: rgba(0,150,255,0.7); }
+.team.green .watermark { color: rgba(0,150,0,0.7); }
+.team.white .watermark { color: rgba(200,200,200,0.7); }
 
 #quickOverlay input {
   font-size: 2em;
