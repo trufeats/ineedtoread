@@ -83,7 +83,7 @@ button:hover{background:#eee;}
 <button id="pickBtn">Pick Student</button>
 <div id="countdown"></div>
 <div id="stats" style="position:fixed;bottom:5px;left:5px;font-size:0.8rem;"></div>
-<button id="perfBtn" style="position:fixed;bottom:40px;right:10px;">Performance</button>
+<button id="perfBtn" style="position:fixed;bottom:10px;right:90px;">Performance</button>
 <button id="perfExport" style="position:fixed;bottom:10px;right:10px;">Export</button>
 
 <!-- Import/Export Popup -->
@@ -158,8 +158,7 @@ button:hover{background:#eee;}
       <li>space: student list</li>
       <li>m/f/r: pick gender</li>
       <li>1/2/3: pick count</li>
-      <li>, and .: history</li>
-      <li>/: soft reset</li>
+      <li>. and /: history</li>
       <li>?: hard reset</li>
       <li>z/x/s+click: mark correct/incorrect/unanswered</li>
       <li>Shift+Esc: reset counts</li>
@@ -172,10 +171,10 @@ button:hover{background:#eee;}
 <div id="performanceOverlay" class="overlay hidden">
   <div class="content">
     <span class="close" id="perfClose">✖</span>
-    <button id="perfClassBtn" style="position:absolute;bottom:10px;left:10px;">Class</button>
+    <button id="perfClassBtn" style="position:absolute;bottom:10px;right:10px;">Class</button>
     <h2 id="perfTitle">Performance</h2>
     <div id="perfContent"></div>
-    <button id="perfBack" style="display:none;margin-top:10px;">Back</button>
+    <button id="perfBack" style="position:absolute;bottom:10px;left:10px;display:none;">Back</button>
   </div>
 </div>
 
@@ -313,7 +312,7 @@ document.addEventListener('mouseup',()=>dragging=false);
 
 // Import / Export
 dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
-dataClose.addEventListener('mousedown',e=>e.stopPropagation());
+dataClose.addEventListener('mousedown',e=>{e.stopPropagation();dragging=false;});
 dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
 importBtn.addEventListener('click',()=>{
   try{
@@ -451,7 +450,30 @@ studentOverlay.addEventListener('click',e=>{
     }else if(modifier==='f') students[idx].gender='f';
     else if(modifier==='m') students[idx].gender='m';
     else if(modifier && /^\d$/.test(modifier)) students[idx].weight=parseInt(modifier);
-    else {students.splice(idx,1);delete performance[name];}
+    else {
+      const hasData=sessionData.some(sess=>{
+        const p=sess.students[name];
+        return p && (p.correct||p.incorrect||p.skipped);
+      });
+      if(hasData){
+        if(!confirm(`Delete ${name} and all past data?`)) return;
+        sessionData.forEach(sess=>{
+          const p=sess.students[name];
+          if(p){
+            sess.class.correct-=p.correct;
+            sess.class.incorrect-=p.incorrect;
+            sess.class.skipped-=p.skipped;
+            delete sess.students[name];
+          }
+        });
+      }else{
+        sessionData.forEach(sess=>{delete sess.students[name];});
+      }
+      students.splice(idx,1);
+      delete performance[name];
+      delete usedCounts[name];
+      forcedQueue=forcedQueue.filter(n=>n!==name);
+    }
     renderStudents();
   }
 });
@@ -493,9 +515,18 @@ document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
   if(e.key==='q'){toggle(settingsBox);}
   else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
-  else if(e.key===','){if(history.length){historyIndex=Math.max(0,historyIndex-1);result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');}}
-  else if(e.key==='.') {if(history.length){historyIndex=Math.min(history.length-1,historyIndex+1);result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');}}
-  else if(e.key==='/'){softReset();}
+  else if(e.key==='.'){
+    if(history.length){
+      historyIndex=Math.max(0,historyIndex-1);
+      result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');
+    }
+  }
+  else if(e.key==='/'){
+    if(history.length){
+      historyIndex=Math.min(history.length-1,historyIndex+1);
+      result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');
+    }
+  }
   else if(e.key==='?'){hardReset();}
   else if(e.key==='i'){toggle(infoBox);}
   else if(['m','f','r','1','2','3'].includes(e.key) && settingsBox.classList.contains('hidden') && studentOverlay.classList.contains('hidden')){
@@ -597,6 +628,7 @@ function performPick(tempGender=null,tempCount=null){
 function showPerfList(){
   perfTitle.textContent='Performance';
   perfBack.style.display='none';
+  perfClassBtn.style.display='block';
   const list=students.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<div class="perf-name" data-name="${s.name}">${s.name}</div>`).join('');
   perfContent.innerHTML=`<input id="perfSearch" placeholder="Search" style="width:100%;margin-bottom:10px;"/><div id="perfList">${list}</div>`;
   const perfSearch=document.getElementById('perfSearch');
@@ -620,6 +652,7 @@ function showStudentPerf(name){
   html+='</table>';
   perfContent.innerHTML=html;
   perfBack.style.display='block';
+  perfClassBtn.style.display='block';
 }
 
 
@@ -640,6 +673,7 @@ function showClassPerf(){
   html+='</table>';
   perfContent.innerHTML=html;
   perfBack.style.display='block';
+  perfClassBtn.style.display='none';
 }
 
 function exportPerformance(){
