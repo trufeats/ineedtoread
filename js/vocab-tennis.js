@@ -48,6 +48,7 @@ let dragOffsetY = 0;
 let shiftDown = false;
 let cursorTrailActive = false;
 let trailType = '';
+let lastTeam = null;
 
 function showMultiplier(text){
   multiplierOverlay.textContent = text;
@@ -92,6 +93,7 @@ const CLIPS = {
 function initTeams(num) {
   teams = [];
   activeTeams = [];
+  lastTeam = null;
   gameArea.innerHTML = '';
   const colors = ['red','blue','green','white'];
   const positions = {
@@ -137,11 +139,23 @@ function teamClicked(i, e){
     if(ball.classList.contains('black') || ball.classList.contains('meteor')){
       rumbleScreen(ball.classList.contains('meteor'));
     }
+    const startX = parseFloat(ball.style.left);
+    const startY = parseFloat(ball.style.top);
     currentTeam = i;
     awaitingTeamSelection = false;
     controls.classList.remove('hidden');
     moveBall(x, y);
-    setTimeout(startTimer, BALL_SPEED);
+    const startTimeout = setTimeout(startTimer, BALL_SPEED);
+    if(lastTeam !== null){
+      setTimeout(() => {
+        if(Math.random() < 0.01){
+          clearTimeout(startTimeout);
+          currentTeam = lastTeam;
+          moveBall(startX, startY);
+          setTimeout(startTimer, BALL_SPEED);
+        }
+      }, BALL_SPEED / 2);
+    }
   };
 
   if(ball.classList.contains('blackhole')){
@@ -169,11 +183,13 @@ checkBtn.addEventListener('click', () => {
   if(currentTeam === null) return;
   teams[currentTeam].score++;
   teams[currentTeam].el.querySelector('.score').textContent = teams[currentTeam].score;
+  lastTeam = currentTeam;
   endRound();
 });
 
 xBtn.addEventListener('click', () => {
   if(currentTeam === null) return;
+  lastTeam = currentTeam;
   eliminateTeam(currentTeam);
   endRound();
   if(activeTeams.length === 1){
@@ -481,6 +497,15 @@ document.addEventListener('keydown', (e) => {
     if(!paused){
       pauseTimer();
       resumeTimer();
+    }
+  } else if(key === 'escape'){
+    if(quickOverlay.classList.contains('hidden') &&
+       searchOverlay.classList.contains('hidden') &&
+       infoOverlay.classList.contains('hidden') &&
+       endOverlay.classList.contains('hidden') &&
+       setupScreen.style.display === 'none'){
+      e.preventDefault();
+      endGame();
     }
   }
 });
