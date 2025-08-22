@@ -20,6 +20,7 @@ const screenOverlay = document.getElementById('screenOverlay');
 const orbRain = document.getElementById('orbRain');
 const infoOverlay = document.getElementById('infoOverlay');
 const infoClose = document.getElementById('infoClose');
+const multiplierOverlay = document.getElementById('multiplierOverlay');
 
 let teams = [];
 let activeTeams = [];
@@ -36,10 +37,16 @@ const BALL_SPEED = 600; // ms
 const undoStack = [];
 const redoStack = [];
 
-let dragKeyDown = false;
 let draggingHud = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+let shiftDown = false;
+
+function showMultiplier(text){
+  multiplierOverlay.textContent = text;
+  multiplierOverlay.classList.remove('hidden');
+  setTimeout(() => multiplierOverlay.classList.add('hidden'), 800);
+}
 
 function isTyping(){
   const el = document.activeElement;
@@ -184,9 +191,11 @@ function maybeMutateBall(){
   if(r < 0.025){
     ball.classList.add('meteor');
     flashScreen('burgundy');
+    showMultiplier('x3');
   } else if(r < 0.105){
     ball.classList.add('black');
     flashScreen('charcoal');
+    showMultiplier('x2');
   }
 }
 
@@ -253,31 +262,6 @@ function resumeTimer(){
   }
 }
 
-timerEl.addEventListener('click', (e) => {
-  if(e.target === resizeHandle) return;
-  if(e.shiftKey){
-    remainingTime++;
-    updateTimer();
-    return;
-  }
-  if(paused){
-    resumeTimer();
-  } else {
-    pauseTimer();
-  }
-});
-
-document.querySelectorAll('.time-set').forEach(btn => {
-  btn.addEventListener('click', () => {
-    timerDuration = parseInt(btn.dataset.time);
-    remainingTime = timerDuration;
-    updateTimer();
-    if(!paused){
-      pauseTimer();
-      resumeTimer();
-    }
-  });
-});
 
 
 function addWord(word){
@@ -299,28 +283,19 @@ function removeWord(span){
 }
 
 document.addEventListener('keydown', (e) => {
-  if(isTyping()) return;
-  if(e.key === ','){
-    undo();
-  } else if(e.key === '.'){
-    redo();
+  if(e.key === 'Shift' && !isTyping()){
+    shiftDown = true;
+    timerSection.style.pointerEvents = 'auto';
   }
-});
-
-document.addEventListener('keydown', (e) => {
   if(isTyping()) return;
   const key = e.key.toLowerCase();
-  if(key === 'x'){
-    dragKeyDown = true;
-  } else if(key === 'z'){
+  if(key === 'z'){
     resetHud();
-  }
-});
-
-document.addEventListener('keydown', (e) => {
-  if(isTyping()) return;
-  const key = e.key.toLowerCase();
-  if(key === ' '){
+  } else if(key === ','){
+    undo();
+  } else if(key === '.'){
+    redo();
+  } else if(key === ' '){
     e.preventDefault();
     if(quickOverlay.classList.contains('hidden')) openQuick();
   } else if(key === 's'){
@@ -336,16 +311,25 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if(infoOverlay.classList.contains('hidden')) openInfo();
     else closeInfo();
+  } else if(['1','2','3','5'].includes(key)){
+    const mapping = { '1':10, '2':20, '3':30, '5':5 };
+    timerDuration = mapping[key];
+    remainingTime = timerDuration;
+    updateTimer();
+    if(!paused){
+      pauseTimer();
+      resumeTimer();
+    }
   }
 });
 
 document.addEventListener('keyup', (e) => {
-  if(e.key.toLowerCase() === 'x'){
-    dragKeyDown = false;
+  if(e.key === 'Shift'){
+    shiftDown = false;
+    timerSection.style.pointerEvents = 'none';
+    draggingHud = false;
+    resizing = false;
   }
-});
-
-document.addEventListener('keydown', (e) => {
   if(isTyping()) return;
   if(e.key === 'Escape' && !infoOverlay.classList.contains('hidden')){
     closeInfo();
@@ -353,13 +337,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 timerEl.addEventListener('mousedown', (e) => {
-  if(dragKeyDown){
-    draggingHud = true;
-    const rect = timerSection.getBoundingClientRect();
-    dragOffsetX = e.clientX - rect.left;
-    dragOffsetY = e.clientY - rect.top;
-    e.preventDefault();
-  }
+  if(!shiftDown || e.target === resizeHandle) return;
+  draggingHud = true;
+  const rect = timerSection.getBoundingClientRect();
+  dragOffsetX = e.clientX - rect.left;
+  dragOffsetY = e.clientY - rect.top;
+  e.preventDefault();
 });
 
 document.addEventListener('mousemove', (e) => {
@@ -378,6 +361,9 @@ function resetHud(){
   timerSection.style.left = '';
   timerSection.style.top = '10px';
   timerSection.style.right = '10px';
+  timerEl.style.width = '100px';
+  timerEl.style.height = '100px';
+  timerEl.style.fontSize = '60px';
 }
 
 function undo(){
@@ -475,6 +461,7 @@ let startX = 0;
 let startSize = 0;
 
 resizeHandle.addEventListener('mousedown', (e) => {
+  if(!shiftDown) return;
   resizing = true;
   startX = e.clientX;
   startSize = timerEl.offsetWidth;
