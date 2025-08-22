@@ -67,7 +67,7 @@ button:hover{background:#eee;}
 
 #studentOverlay .column.male .name::after,
 #studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 4s linear infinite;}
-#studentOverlay .name.used{color:#777;text-decoration:line-through;}
+#studentOverlay .name.used{color:#000;text-decoration:line-through;}
 #studentOverlay .name.used::after{display:none;}
 
 </style>
@@ -165,6 +165,7 @@ let history=[]; // array of arrays
 let historyIndex=-1;
 let recent=[]; // last picks for noRecent
 let remaining=[]; // for noRepeat mode
+let usedCounts={}; // times each student has been used
 let modifier=null; // for student overlay
 let forcedQueue=[]; // scheduled picks
 
@@ -210,17 +211,12 @@ const infoClose=document.getElementById('infoClose');
 
 function toggle(el){el.classList.toggle('hidden');}
 
-function buildRemaining(preserve=false){
-  const old=preserve?remaining.slice():[];
+function buildRemaining(){
   remaining=[];
-  const used={};
-  if(preserve){
-    old.forEach(s=>{used[s.name]=(used[s.name]||0)+1;});
-  }
   students.forEach(s=>{
     if(s.disabled) return;
     const w=s.weight||1;
-    const u=used[s.name]||0;
+    const u=usedCounts[s.name]||0;
     for(let i=u;i<w;i++) remaining.push(s);
   });
 }
@@ -229,6 +225,7 @@ function softReset(){
   history=[];
   historyIndex=-1;
   recent=[];
+  usedCounts={};
   buildRemaining();
   result.innerHTML='';
   endOverlay.classList.add('hidden');
@@ -279,8 +276,8 @@ function markUsed(){
     if(stu && stu.disabled){
       el.classList.remove('used');
     }else{
-      const exists=remaining.some(s=>s.name===el.dataset.name);
-      if(settings.mode==='noRepeat' && !exists){
+      const used=usedCounts[stu.name]||0;
+      if(settings.mode==='noRepeat' && used>=(stu.weight||1)){
         el.classList.add('used');
       }else{
         el.classList.remove('used');
@@ -316,7 +313,7 @@ function renderStudents(){
   maleList.innerHTML=males.map(tmpl).join('');
   femaleList.innerHTML=females.map(tmpl).join('');
   unknownList.innerHTML=unknowns.map(tmpl).join('');
-  if(settings.mode==='noRepeat') buildRemaining(true);
+  if(settings.mode==='noRepeat') buildRemaining();
   markUsed();
   if(settings.mode==='noRepeat') countdown.textContent=`Remaining: ${remaining.length}`;
 }
@@ -439,7 +436,8 @@ function performPick(tempGender=null,tempCount=null){
   historyIndex=history.length-1;
   recent=recent.concat(pick.map(s=>s.name)).slice(-3);
   if(settings.mode==='noRepeat'){
-    pick.forEach(s=>{if(s.weight!==0){const i=remaining.indexOf(s);if(i!==-1) remaining.splice(i,1);}});
+    pick.forEach(s=>{if(s.weight!==0){usedCounts[s.name]=(usedCounts[s.name]||0)+1;}});
+    buildRemaining();
     countdown.textContent=`Remaining: ${remaining.length}`;
     markUsed();
     if(!remaining.length) endOverlay.classList.remove('hidden');
