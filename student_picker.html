@@ -5,11 +5,13 @@
 <title>Student Picker</title>
 <style>
 /* Basic layout and typography */
-body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#fafafa;transition:background 0.3s;}
+body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:linear-gradient(-45deg,#1a2a6c,#b21f1f,#fdbb2d,#1a2a6c);background-size:400% 400%;animation:cosmic 20s ease infinite;}
 button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius:4px;transition:background 0.3s;}
 button:hover{background:#eee;}
 #pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
-#result{font-size:2rem;margin-top:20px;min-height:2.5rem;}
+#result{margin-top:20px;min-height:2.5rem;}
+#result .picked{font-size:3rem;animation:pop 0.6s ease forwards;opacity:0;}
+#countdown{margin-top:10px;font-size:1.2rem;}
 
 /* Top buttons */
 .top-btn{position:fixed;top:10px;background:transparent;border:none;font-size:1.5rem;}
@@ -37,8 +39,8 @@ button:hover{background:#eee;}
 /* Student list overlay */
 #studentOverlay .columns{display:flex;gap:20px;}
 #studentOverlay .column{min-width:150px;}
-#studentOverlay .column.male .name{font-size:1.2rem;background:rgba(38,66,139,0.2);}
-#studentOverlay .column.female .name{font-size:1.2rem;background:rgba(255,0,255,0.2);}
+#studentOverlay .column.male .name{font-size:4.8rem;background:rgba(38,66,139,0.2);position:relative;overflow:hidden;}
+#studentOverlay .column.female .name{font-size:4.8rem;background:rgba(255,0,255,0.2);position:relative;overflow:hidden;}
 #studentOverlay .column.unknown{font-size:0.9rem;text-align:center;}
 #studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
 #studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;transition:background 0.3s;}
@@ -48,6 +50,18 @@ button:hover{background:#eee;}
 /* End overlay */
 #endOverlay .content{background:#fff;padding:40px;border-radius:8px;text-align:center;}
 
+/* Info overlay */
+#infoBox ul{list-style:none;padding-left:0;}
+#infoBox li{margin:5px 0;}
+
+/* Animations */
+@keyframes shine{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+@keyframes pop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
+@keyframes cosmic{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+
+#studentOverlay .column.male .name::after,
+#studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 4s linear infinite;}
+
 </style>
 </head>
 <body>
@@ -55,6 +69,7 @@ button:hover{background:#eee;}
 <button id="settingsToggle" class="top-btn">⚙️</button>
 <div id="result"></div>
 <button id="pickBtn">Pick Student</button>
+<div id="countdown"></div>
 
 <!-- Import/Export Popup -->
 <div id="dataBox" class="popup hidden" style="top:60px;left:20px;">
@@ -115,6 +130,24 @@ button:hover{background:#eee;}
   </div>
 </div>
 
+<!-- Controls Overlay -->
+<div id="infoBox" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="infoClose">✖</span>
+    <h2>Controls</h2>
+    <ul>
+      <li>q: settings</li>
+      <li>space: student list</li>
+      <li>m/f/r: pick gender</li>
+      <li>1/2/3: pick count</li>
+      <li>, and .: history</li>
+      <li>/: soft reset</li>
+      <li>?: hard reset</li>
+      <li>i: controls</li>
+    </ul>
+  </div>
+</div>
+
 <script>
 // Data structures
 let students=[]; // {name, gender}
@@ -124,12 +157,14 @@ let historyIndex=-1;
 let recent=[]; // last picks for noRecent
 let remaining=[]; // for noRepeat mode
 let modifier=null; // for student overlay
+let forcedQueue=[]; // scheduled picks
 
 const result=document.getElementById('result');
 const pickBtn=document.getElementById('pickBtn');
 const genderSetting=document.getElementById('genderSetting');
 const modeSetting=document.getElementById('modeSetting');
 const countSetting=document.getElementById('countSetting');
+const countdown=document.getElementById('countdown');
 
 // Import/Export popup
 const dataBox=document.getElementById('dataBox');
@@ -159,6 +194,10 @@ const studentInput=document.getElementById('studentInput');
 const endOverlay=document.getElementById('endOverlay');
 const resetBtn=document.getElementById('resetBtn');
 
+// Info overlay
+const infoBox=document.getElementById('infoBox');
+const infoClose=document.getElementById('infoClose');
+
 function toggle(el){el.classList.toggle('hidden');}
 
 function softReset(){
@@ -166,8 +205,10 @@ function softReset(){
   historyIndex=-1;
   recent=[];
   remaining=students.slice();
-  result.textContent='';
+  result.innerHTML='';
   endOverlay.classList.add('hidden');
+  countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';
+  forcedQueue=[];
 }
 
 function hardReset(){
@@ -193,7 +234,15 @@ settingsToggle.addEventListener('click',()=>toggle(settingsBox));
 settingsClose.addEventListener('click',()=>settingsBox.classList.add('hidden'));
 
 genderSetting.addEventListener('change',()=>settings.gender=genderSetting.value);
-modeSetting.addEventListener('change',()=>{settings.mode=modeSetting.value;if(settings.mode==='noRepeat'){remaining=students.slice();}});
+modeSetting.addEventListener('change',()=>{
+  settings.mode=modeSetting.value;
+  if(settings.mode==='noRepeat'){
+    remaining=students.slice();
+    countdown.textContent=`Remaining: ${remaining.length}`;
+  }else{
+    countdown.textContent='';
+  }
+});
 countSetting.addEventListener('change',()=>settings.count=parseInt(countSetting.value));
 
 // Student overlay functions
@@ -226,18 +275,20 @@ studentOverlay.addEventListener('click',e=>{
 });
 
 studentClose.addEventListener('click',()=>studentOverlay.classList.add('hidden'));
+infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
 
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');}
+  if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');infoBox.classList.add('hidden');}
   if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m')) modifier=e.key;
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
   if(e.key==='q'){toggle(settingsBox);}
   else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
-  else if(e.key===','){if(history.length){historyIndex=Math.max(0,historyIndex-1);result.textContent=history[historyIndex].join(', ');}}
-  else if(e.key==='.') {if(history.length){historyIndex=Math.min(history.length-1,historyIndex+1);result.textContent=history[historyIndex].join(', ');}}
+  else if(e.key===','){if(history.length){historyIndex=Math.max(0,historyIndex-1);result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');}}
+  else if(e.key==='.') {if(history.length){historyIndex=Math.min(history.length-1,historyIndex+1);result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');}}
   else if(e.key==='/'){softReset();}
   else if(e.key==='?'){hardReset();}
+  else if(e.key==='i'){toggle(infoBox);}
   else if(['m','f','r','1','2','3'].includes(e.key) && settingsBox.classList.contains('hidden') && studentOverlay.classList.contains('hidden')){
     if(e.key==='m') performPick('m',null);
     if(e.key==='f') performPick('f',null);
@@ -251,11 +302,26 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>{if(e.key==='f'||e.key==='m') modifier=null;});
 
 pickBtn.addEventListener('click',()=>performPick());
+result.addEventListener('click',e=>{
+  if(e.target.classList.contains('picked') && e.shiftKey){
+    const name=e.target.textContent;
+    let rounds=3;
+    if(settings.mode==='noRepeat'){
+      const roundsAvail=Math.ceil(Math.max(1,remaining.length)/settings.count);
+      rounds=Math.min(3,Math.max(1,roundsAvail-1));
+    }
+    forcedQueue.push({name,rounds});
+  }
+});
 
 function performPick(tempGender=null,tempCount=null){
   if(!students.length){result.textContent='No students';return;}
-  let gender=tempGender||settings.gender; 
+  forcedQueue.forEach(f=>f.rounds--);
+  const due=forcedQueue.filter(f=>f.rounds<=0).map(f=>f.name);
+  forcedQueue=forcedQueue.filter(f=>f.rounds>0);
+  let gender=tempGender||settings.gender;
   let count=tempCount||settings.count;
+  let pick=[];
   let pool=students.filter(s=>{
     if(gender==='m') return s.gender==='m';
     if(gender==='f') return s.gender==='f';
@@ -278,23 +344,26 @@ function performPick(tempGender=null,tempCount=null){
     });
     if(!pool.length){result.textContent='No matching students';return;}
   }
-  if(!pool.length){result.textContent='No matching students';return;}
-  let pick=[]; let tempPool=pool.slice();
-  for(let i=0;i<count && tempPool.length;i++){
+  pool=pool.filter(s=>!due.includes(s.name));
+  due.forEach(name=>{const s=students.find(st=>st.name===name);if(s) pick.push(s);});
+  if(!pool.length && pick.length<count){result.textContent='No matching students';return;}
+  let tempPool=pool.slice();
+  for(let i=pick.length;i<count && tempPool.length;i++){
     const idx=Math.floor(Math.random()*tempPool.length);
     pick.push(tempPool.splice(idx,1)[0]);
   }
-  result.textContent=pick.map(s=>s.name).join(', ');
+  result.innerHTML=pick.map(s=>`<div class="picked">${s.name}</div>`).join('');
   history.push(pick.map(s=>s.name));
   historyIndex=history.length-1;
   recent=recent.concat(pick.map(s=>s.name)).slice(-3);
   if(settings.mode==='noRepeat'){
     remaining=remaining.filter(s=>!pick.includes(s));
+    countdown.textContent=`Remaining: ${remaining.length}`;
     if(!remaining.length) endOverlay.classList.remove('hidden');
   }
 }
 
-resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');});
+resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';});
 </script>
 </body>
 </html>
