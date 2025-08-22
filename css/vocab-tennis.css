@@ -225,6 +225,19 @@ html, body {
   z-index: 3000;
 }
 
+#exportWords {
+  position: absolute;
+  right: 40px;
+  bottom: 40px;
+  padding: 10px 20px;
+  font-size: 1.2em;
+  cursor: pointer;
+  z-index: 3000;
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+}
+
 #ball {
   width: 50px;
   height: 50px;

@@ -10,6 +10,7 @@ const restartBtn = document.getElementById('restart');
 const endOverlay = document.getElementById('endOverlay');
 const finalScores = document.getElementById('finalScores');
 const finalWords = document.getElementById('finalWords');
+const exportBtn = document.getElementById('exportWords');
 const resizeHandle = document.getElementById('resizeTimer');
 const timeDisplay = document.getElementById('timeDisplay');
 const wordLog = document.getElementById('wordLog');
@@ -216,6 +217,8 @@ restartBtn.addEventListener('click', () => {
   location.reload();
 });
 
+exportBtn.addEventListener('click', exportWordList);
+
 function renderEndOverlay(winner){
   finalScores.innerHTML = '';
   teams.forEach((t,i) => {
@@ -240,6 +243,27 @@ function renderEndOverlay(winner){
   words.sort((a,b) => b.word.length - a.word.length || a.idx - b.idx);
   finalWords.innerHTML = words.map(w => `<span>${w.word}</span>`).join(' ');
   endOverlay.classList.remove('hidden');
+}
+
+function exportWordList(){
+  let order = prompt('Export words in which order?\n1 = old to new\n2 = alphabetical\n3 = by length');
+  if(!order) return;
+  order = order.trim();
+  let words = Array.from(wordLog.children).map((el,idx) => ({w:el.textContent, idx}));
+  if(order === '2' || order.toLowerCase().startsWith('a')){
+    words.sort((a,b) => a.w.localeCompare(b.w));
+  } else if(order === '3' || order.toLowerCase().startsWith('l')){
+    words.sort((a,b) => b.w.length - a.w.length || a.idx - b.idx);
+  }
+  const blob = new Blob([words.map(o=>o.w).join(';')], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'wordlist.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function moveBall(x, y){
