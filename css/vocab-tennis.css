@@ -325,6 +325,7 @@ html, body {
 .watermark.water::after { content: '\1F4A7'; }
 .watermark.earth::after { content: '\26F0'; }
 .watermark.air::after { content: '\1F4A8'; }
+.watermark.air { font-size: 6em; }
 
 .team.red .watermark { color: rgba(255,80,0,0.7); }
 .team.blue .watermark { color: rgba(0,150,255,0.7); }
@@ -336,6 +337,17 @@ html, body {
   padding: 10px;
   border: none;
   border-radius: 8px;
+}
+
+#quickOverlay input.error {
+  border: 3px solid red;
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
 #searchClose {
@@ -557,6 +569,7 @@ body.rumble-strong {
   opacity: 0.5;
   margin-bottom: 10px;
 }
+#endOverlay .final-team .watermark.air { font-size: 4em; }
 
 #endOverlay .final-team .final-score {
   font-size: 3em;

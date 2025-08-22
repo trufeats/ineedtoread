@@ -123,6 +123,7 @@ function initTeams(num) {
   gameArea.appendChild(ball);
   ball.style.left = '50%';
   ball.style.top = '50%';
+  timeDisplay.textContent = '\u221E';
 }
 
 function teamClicked(i, e){
@@ -184,6 +185,7 @@ function endRound(){
   controls.classList.add('hidden');
   awaitingTeamSelection = true;
   currentTeam = null;
+  timeDisplay.textContent = '\u221E';
   maybeMutateBall();
 }
 
@@ -205,6 +207,8 @@ function endGame(){
   }
   controls.classList.add('hidden');
   orbRain.classList.remove('hidden');
+  resetHud();
+  timeDisplay.textContent = '\u221E';
   renderEndOverlay(winner);
 }
 
@@ -531,15 +535,25 @@ function openQuick(){
 
 function closeQuick(){
   quickOverlay.classList.add('hidden');
+  quickInput.classList.remove('error');
 }
 
 quickInput.addEventListener('keydown', (e) => {
   if(e.key === 'Enter'){
     const val = quickInput.value.trim();
     if(val){
-      addWord(val);
+      const exists = Array.from(wordLog.children)
+        .some(el => el.textContent.toLowerCase() === val.toLowerCase());
+      if(exists){
+        quickInput.classList.add('error');
+        quickInput.addEventListener('animationend', () => quickInput.classList.remove('error'), {once:true});
+      } else {
+        addWord(val);
+        closeQuick();
+      }
+    } else {
+      closeQuick();
     }
-    closeQuick();
   } else if(e.key === 'Escape'){
     closeQuick();
   }
