@@ -19,6 +19,8 @@ const searchResults = document.getElementById('searchResults');
 const searchClose = document.getElementById('searchClose');
 const screenOverlay = document.getElementById('screenOverlay');
 const orbRain = document.getElementById('orbRain');
+const infoOverlay = document.getElementById('infoOverlay');
+const infoClose = document.getElementById('infoClose');
 
 let teams = [];
 let activeTeams = [];
@@ -59,6 +61,7 @@ function initTeams(num) {
   activeTeams = [];
   gameArea.innerHTML = '';
   const colors = ['red','blue','green','white'];
+  const elements = ['fire','water','earth','air'];
   for(let i=0;i<num;i++){
     const el = document.createElement('div');
     el.className = 'team ' + colors[i];
@@ -74,6 +77,9 @@ function initTeams(num) {
     score.className = 'score';
     score.textContent = '0';
     el.appendChild(score);
+    const mark = document.createElement('div');
+    mark.className = 'watermark ' + elements[i];
+    el.appendChild(mark);
     el.addEventListener('click', (e) => teamClicked(i, e));
     gameArea.appendChild(el);
     teams.push({index:i, score:0, el});
@@ -328,12 +334,22 @@ document.addEventListener('keydown', (e) => {
   } else if(e.key === 'd'){
     e.preventDefault();
     xBtn.click();
+  } else if(e.key === 'i'){
+    e.preventDefault();
+    if(infoOverlay.classList.contains('hidden')) openInfo();
   }
 });
 
 document.addEventListener('keyup', (e) => {
   if(e.key === 'x'){
     dragKeyDown = false;
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if(isTyping()) return;
+  if(e.key === 'Escape' && !infoOverlay.classList.contains('hidden')){
+    closeInfo();
   }
 });
 
@@ -444,6 +460,16 @@ searchOverlay.addEventListener('keydown', (e) => {
 });
 
 searchClose.addEventListener('click', closeSearch);
+
+function openInfo(){
+  infoOverlay.classList.remove('hidden');
+}
+
+function closeInfo(){
+  infoOverlay.classList.add('hidden');
+}
+
+infoClose.addEventListener('click', closeInfo);
 
 resizeBtn.addEventListener('click', () => {
   timerEl.classList.toggle('large');
