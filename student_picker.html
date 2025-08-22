@@ -45,6 +45,8 @@ button:hover{background:#eee;}
 #studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
 #studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;transition:background 0.3s;}
 #studentOverlay .name:hover{background:#eee;}
+#studentOverlay .name.inactive{color:#888;}
+#studentOverlay .name .mult{font-size:0.5em;margin-left:8px;}
 #studentInput{width:100%;margin-top:10px;padding:8px;}
 
 /* End overlay */
@@ -58,9 +60,12 @@ button:hover{background:#eee;}
 @keyframes shine{from{left:-100%;}to{left:100%;}}
 @keyframes pop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
 @keyframes cosmic{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+.firework{position:fixed;pointer-events:none;}
+.firework span{position:absolute;width:4px;height:4px;border-radius:50%;background:gold;animation:particle 600ms ease-out forwards;}
+@keyframes particle{from{transform:translate(0,0);opacity:1;}to{transform:translate(var(--x),var(--y));opacity:0;}}
 
 #studentOverlay .column.male .name::after,
-#studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 8s linear infinite;}
+#studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 4s linear infinite;}
 #studentOverlay .name.used{color:#777;text-decoration:line-through;}
 #studentOverlay .name.used::after{display:none;}
 
@@ -152,7 +157,7 @@ button:hover{background:#eee;}
 
 <script>
 // Data structures
-let students=[]; // {name, gender}
+let students=[]; // {name, gender, weight, disabled}
 let settings={gender:'r', mode:'random', count:1};
 let history=[]; // array of arrays
 let historyIndex=-1;
@@ -202,11 +207,24 @@ const infoClose=document.getElementById('infoClose');
 
 function toggle(el){el.classList.toggle('hidden');}
 
+function buildRemaining(){
+  remaining=[];
+  students.forEach(s=>{
+    if(s.disabled) return;
+    const w=s.weight||1;
+    if(w===0){
+      remaining.push(s);
+    }else{
+      for(let i=0;i<w;i++) remaining.push(s);
+    }
+  });
+}
+
 function softReset(){
   history=[];
   historyIndex=-1;
   recent=[];
-  remaining=students.slice();
+  buildRemaining();
   result.innerHTML='';
   endOverlay.classList.add('hidden');
   countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';
@@ -229,7 +247,7 @@ document.addEventListener('mouseup',()=>dragging=false);
 dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
 dataClose.addEventListener('mousedown',e=>e.stopPropagation());
 dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
-importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr;renderStudents();softReset();dataBox.classList.add('hidden');}}catch(e){alert('Invalid data');}});
+importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr.map(s=>({name:s.name,gender:s.gender||'u',weight:s.weight||1,disabled:!!s.disabled}));renderStudents();softReset();dataBox.classList.add('hidden');}}catch(e){alert('Invalid data');}});
 exportBtn.addEventListener('click',()=>{dataArea.value=JSON.stringify(students);dataArea.select();document.execCommand('copy');});
 
 // Settings controls
@@ -240,7 +258,7 @@ genderSetting.addEventListener('change',()=>settings.gender=genderSetting.value)
 modeSetting.addEventListener('change',()=>{
   settings.mode=modeSetting.value;
   if(settings.mode==='noRepeat'){
-    remaining=students.slice();
+    buildRemaining();
     countdown.textContent=`Remaining: ${remaining.length}`;
   }else{
     countdown.textContent='';
@@ -252,29 +270,55 @@ countSetting.addEventListener('change',()=>settings.count=parseInt(countSetting.
 // Student overlay functions
 function markUsed(){
   document.querySelectorAll('#studentOverlay .name').forEach(el=>{
-    const exists=remaining.some(s=>s.name===el.dataset.name);
-    if(settings.mode==='noRepeat' && !exists){
-      el.classList.add('used');
-    }else{
+    const stu=students.find(s=>s.name===el.dataset.name);
+    if(stu && stu.disabled){
       el.classList.remove('used');
+    }else{
+      const exists=remaining.some(s=>s.name===el.dataset.name);
+      if(settings.mode==='noRepeat' && !exists){
+        el.classList.add('used');
+      }else{
+        el.classList.remove('used');
+      }
     }
   });
+}
+
+function spawnFirework(e){
+  const fw=document.createElement('div');
+  fw.className='firework';
+  fw.style.left=e.clientX+'px';
+  fw.style.top=e.clientY+'px';
+  const parts=8;
+  for(let i=0;i<parts;i++){
+    const s=document.createElement('span');
+    const angle=(i/parts)*Math.PI*2;
+    const dist=20;
+    s.style.setProperty('--x',Math.cos(angle)*dist+'px');
+    s.style.setProperty('--y',Math.sin(angle)*dist+'px');
+    s.style.background=`hsl(${Math.random()*360},100%,70%)`;
+    fw.appendChild(s);
+  }
+  document.body.appendChild(fw);
+  setTimeout(()=>fw.remove(),600);
 }
 
 function renderStudents(){
   const males=students.filter(s=>s.gender==='m').sort((a,b)=>a.name.localeCompare(b.name));
   const females=students.filter(s=>s.gender==='f').sort((a,b)=>a.name.localeCompare(b.name));
   const unknowns=students.filter(s=>s.gender==='u').sort((a,b)=>a.name.localeCompare(b.name));
-  maleList.innerHTML=males.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
-  femaleList.innerHTML=females.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
-  unknownList.innerHTML=unknowns.map(s=>`<div class="name" data-name="${s.name}">${s.name}</div>`).join('');
-  remaining=students.slice();
+  const tmpl=s=>`<div class="name${s.disabled?' inactive':''}" data-name="${s.name}">${s.name}${s.weight!==1?`<span class="mult">x${s.weight}</span>`:''}</div>`;
+  maleList.innerHTML=males.map(tmpl).join('');
+  femaleList.innerHTML=females.map(tmpl).join('');
+  unknownList.innerHTML=unknowns.map(tmpl).join('');
+  buildRemaining();
   markUsed();
+  if(settings.mode==='noRepeat') countdown.textContent=`Remaining: ${remaining.length}`;
 }
 
 studentInput.addEventListener('keydown',e=>{
   if(e.key==='Enter' && studentInput.value.trim()){
-    students.push({name:studentInput.value.trim(),gender:'u'});studentInput.value='';renderStudents();
+    students.push({name:studentInput.value.trim(),gender:'u',weight:1,disabled:false});studentInput.value='';renderStudents();
   }
 });
 
@@ -283,8 +327,11 @@ studentOverlay.addEventListener('click',e=>{
   if(target.classList.contains('name')){
     const name=target.dataset.name;
     const idx=students.findIndex(s=>s.name===name);
-    if(modifier==='f') students[idx].gender='f';
+    if(e.shiftKey){
+      students[idx].disabled=!students[idx].disabled;
+    }else if(modifier==='f') students[idx].gender='f';
     else if(modifier==='m') students[idx].gender='m';
+    else if(modifier && /^\d$/.test(modifier)) students[idx].weight=parseInt(modifier);
     else students.splice(idx,1);
     renderStudents();
   }
@@ -296,7 +343,7 @@ infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');infoBox.classList.add('hidden');}
-  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m')) modifier=e.key;
+  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||/^\d$/.test(e.key))) modifier=e.key;
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
   if(e.key==='q'){toggle(settingsBox);}
   else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
@@ -315,19 +362,23 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-document.addEventListener('keyup',e=>{if(e.key==='f'||e.key==='m') modifier=null;});
+document.addEventListener('keyup',e=>{if(e.key==='f'||e.key==='m'||/^\d$/.test(e.key)) modifier=null;});
 
-pickBtn.addEventListener('click',()=>performPick());
-result.addEventListener('click',e=>{
-  if(e.target.classList.contains('picked') && e.shiftKey){
-    const name=e.target.textContent;
-    let rounds=3;
-    if(settings.mode==='noRepeat'){
-      const roundsAvail=Math.ceil(Math.max(1,remaining.length)/settings.count);
-      rounds=Math.min(3,Math.max(1,roundsAvail-1));
+pickBtn.addEventListener('click',e=>{
+  if(e.shiftKey){
+    const last=result.querySelector('.picked');
+    if(last){
+      const name=last.textContent;
+      let rounds=3;
+      if(settings.mode==='noRepeat'){
+        const roundsAvail=Math.ceil(Math.max(1,remaining.length)/settings.count);
+        rounds=Math.min(3,Math.max(1,roundsAvail-1));
+      }
+      forcedQueue.push({name,rounds});
+      spawnFirework(e);
     }
-    forcedQueue.push({name,rounds});
   }
+  performPick();
 });
 
 function performPick(tempGender=null,tempCount=null){
@@ -338,16 +389,19 @@ function performPick(tempGender=null,tempCount=null){
   let gender=tempGender||settings.gender;
   let count=tempCount||settings.count;
   let pick=[];
+  const zeros=students.filter(s=>s.weight===0 && !s.disabled);
   let pool=students.filter(s=>{
-    if(gender==='m') return s.gender==='m';
-    if(gender==='f') return s.gender==='f';
+    if(s.disabled) return false;
+    if(gender==='m' && s.gender!=='m') return false;
+    if(gender==='f' && s.gender!=='f') return false;
     return true;
   });
   if(settings.mode==='noRecent'){
     pool=pool.filter(s=>!recent.includes(s.name));
     if(!pool.length) pool=students.filter(s=>{
-      if(gender==='m') return s.gender==='m';
-      if(gender==='f') return s.gender==='f';
+      if(s.disabled) return false;
+      if(gender==='m' && s.gender!=='m') return false;
+      if(gender==='f' && s.gender!=='f') return false;
       return true;
     });
   }
@@ -360,27 +414,35 @@ function performPick(tempGender=null,tempCount=null){
     });
     if(!pool.length){result.textContent='No matching students';return;}
   }
-  pool=pool.filter(s=>!due.includes(s.name));
+  pool=pool.filter(s=>!due.includes(s.name) && s.weight!==0);
+  let weighted=[];
+  if(settings.mode==='noRepeat'){
+    weighted=pool.slice();
+  }else{
+    pool.forEach(s=>{const w=s.weight||1;for(let i=0;i<w;i++) weighted.push(s);});
+  }
   due.forEach(name=>{const s=students.find(st=>st.name===name);if(s) pick.push(s);});
-  if(!pool.length && pick.length<count){result.textContent='No matching students';return;}
-  let tempPool=pool.slice();
-  for(let i=pick.length;i<count && tempPool.length;i++){
-    const idx=Math.floor(Math.random()*tempPool.length);
-    pick.push(tempPool.splice(idx,1)[0]);
+  zeros.forEach(z=>{if(!due.includes(z.name) && pick.length<count) pick.push(z);});
+  if(!weighted.length && pick.length<count){result.textContent='No matching students';return;}
+  for(let i=pick.length;i<count && weighted.length;i++){
+    const idx=Math.floor(Math.random()*weighted.length);
+    const chosen=weighted[idx];
+    pick.push(chosen);
+    weighted=weighted.filter(s=>s!==chosen);
   }
   result.innerHTML=pick.map(s=>`<div class="picked">${s.name}</div>`).join('');
   history.push(pick.map(s=>s.name));
   historyIndex=history.length-1;
   recent=recent.concat(pick.map(s=>s.name)).slice(-3);
   if(settings.mode==='noRepeat'){
-    remaining=remaining.filter(s=>!pick.includes(s));
+    pick.forEach(s=>{if(s.weight!==0){const i=remaining.indexOf(s);if(i!==-1) remaining.splice(i,1);}});
     countdown.textContent=`Remaining: ${remaining.length}`;
     markUsed();
     if(!remaining.length) endOverlay.classList.remove('hidden');
   }
 }
 
-resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';markUsed();});
+resetBtn.addEventListener('click',()=>{buildRemaining();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';markUsed();});
 </script>
 </body>
 </html>
