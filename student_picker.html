@@ -15,6 +15,7 @@ button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius
 button:hover{background:#eee;}
 #pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
 #gameTitle{position:fixed;top:10px;left:50%;transform:translateX(-50%);margin:0;font-size:2rem;cursor:text;}
+#sessionInfo{position:fixed;top:50px;left:50%;transform:translateX(-50%);font-size:1.2rem;}
 #result{margin-top:20px;min-height:6rem;}
 #result .picked{font-size:6rem;animation:pop 0.6s ease forwards;opacity:0;}
 #countdown{margin-top:10px;font-size:1.2rem;}
@@ -51,7 +52,7 @@ button:hover{background:#eee;}
 #studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
 #studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;transition:background 0.3s;}
 #studentOverlay .name:hover{background:#eee;}
-#studentOverlay .name.inactive{color:#ddd;}
+#studentOverlay .name.inactive{color:#bbb;}
 #studentOverlay .name .mult{font-size:0.5em;margin-left:8px;}
 #studentInput{width:80%;margin:10px auto 0;display:block;padding:8px;box-sizing:border-box;}
 
@@ -87,6 +88,7 @@ button:hover{background:#eee;}
 <button id="dataToggle" class="top-btn">☰</button>
 <button id="settingsToggle" class="top-btn">⚙️</button>
 <h1 id="gameTitle" contenteditable="true">Class</h1>
+<div id="sessionInfo"></div>
 <div id="result"></div>
 <button id="pickBtn">Pick Student</button>
 <div id="countdown"></div>
@@ -208,6 +210,10 @@ let themeIndex=1;
 
 function currentSession(){return sessionData[sessionData.length-1];}
 
+function updateSessionDisplay(){
+  sessionInfo.textContent=`Session ${sessionData.length}`;
+}
+
 function saveStudentState(){
   studentHistory=studentHistory.slice(0,studentHistoryIndex+1);
   studentHistory.push(JSON.parse(JSON.stringify({students,sessionData,usedCounts})));
@@ -238,6 +244,7 @@ const modeSetting=document.getElementById('modeSetting');
 const countSetting=document.getElementById('countSetting');
 const countdown=document.getElementById('countdown');
 const gameTitle=document.getElementById('gameTitle');
+const sessionInfo=document.getElementById('sessionInfo');
 const stats=document.getElementById('stats');
 const perfBtn=document.getElementById('perfBtn');
 const perfExport=document.getElementById('perfExport');
@@ -336,12 +343,13 @@ function hardReset(){
   studentHistory=[];
   studentHistoryIndex=-1;
   saveStudentState();
+  updateSessionDisplay();
 }
 
 function resetPerformance(){
   const sess=currentSession();
   sess.class={correct:0,incorrect:0,skipped:0};
-  students.forEach(s=>{sess.students[s.name]={correct:0,incorrect:0,skipped:0};});
+  students.forEach(s=>{sess.students[s.name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};});
   performance=sess.students;
 }
 
@@ -362,6 +370,13 @@ importBtn.addEventListener('click',()=>{
     const obj=encoded?JSON.parse(atob(encoded)):{s:[],d:[]};
     students=obj.s.map(o=>({name:o.n,gender:o.g,weight:1,disabled:false}));
     sessionData=obj.d&&obj.d.length?obj.d:[{students:{},class:{correct:0,incorrect:0,skipped:0}}];
+    sessionData.forEach(sess=>{
+      Object.keys(sess.students).forEach(n=>{
+        const p=sess.students[n];
+        if(p.late===undefined) p.late=0;
+        if(p.absent===undefined) p.absent=false;
+      });
+    });
     sessionData.push({students:{},class:{correct:0,incorrect:0,skipped:0}});
     performance=currentSession().students;
     renderStudents();
@@ -369,6 +384,7 @@ importBtn.addEventListener('click',()=>{
     studentHistory=[];
     studentHistoryIndex=-1;
     saveStudentState();
+    updateSessionDisplay();
     dataBox.classList.add('hidden');
   }catch(e){alert('Invalid data');}
 });
@@ -458,7 +474,7 @@ function spawnFirework(e){
 
 function renderStudents(){
   const sess=currentSession();
-  students.forEach(s=>{if(!sess.students[s.name]) sess.students[s.name]={correct:0,incorrect:0,skipped:0};});
+  students.forEach(s=>{if(!sess.students[s.name]) sess.students[s.name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};});
   performance=sess.students;
   const males=students.filter(s=>s.gender==='m').sort((a,b)=>a.name.localeCompare(b.name));
   const females=students.filter(s=>s.gender==='f').sort((a,b)=>a.name.localeCompare(b.name));
@@ -477,7 +493,7 @@ studentInput.addEventListener('keydown',e=>{
   if(e.key==='Enter' && studentInput.value.trim()){
     const n=studentInput.value.trim();
     students.push({name:n,gender:'u',weight:1,disabled:false});
-    performance[n]={correct:0,incorrect:0,skipped:0};
+    performance[n]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
     studentInput.value='';
     renderStudents();
     saveStudentState();
@@ -491,8 +507,20 @@ studentOverlay.addEventListener('click',e=>{
     const idx=students.findIndex(s=>s.name===name);
     if(e.shiftKey){
       students[idx].disabled=!students[idx].disabled;
+      const sess=currentSession();
+      if(!sess.students[name]) sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
+      sess.students[name].absent=students[idx].disabled;
+      if(students[idx].disabled) sess.students[name].late=0;
     }else if(modifier==='f') students[idx].gender='f';
     else if(modifier==='m') students[idx].gender='m';
+    else if(modifier==='l'){
+      const mins=parseInt(prompt('Minutes late?')||'0',10);
+      const sess=currentSession();
+      if(!sess.students[name]) sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
+      sess.students[name].late=isNaN(mins)?0:mins;
+      sess.students[name].absent=false;
+      students[idx].disabled=false;
+    }
     else if(modifier && /^\d$/.test(modifier)) students[idx].weight=parseInt(modifier);
     else {
       const hasData=sessionData.some(sess=>{
@@ -534,6 +562,7 @@ perfContent.addEventListener('click',e=>{if(e.target.classList.contains('perf-na
 perfExport.addEventListener('click',exportPerformance);
 
 saveStudentState();
+updateSessionDisplay();
 
 document.body.addEventListener('click',e=>{
   if(e.shiftKey && e.target===document.body){
@@ -570,7 +599,7 @@ document.addEventListener('keydown',e=>{
     }
     return;
   }
-  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||/^\d$/.test(e.key))) modifier=e.key;
+  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||e.key==='l'||/^\d$/.test(e.key))) modifier=e.key;
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
   if(e.key==='q'){toggle(settingsBox);}
   else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
@@ -599,7 +628,7 @@ document.addEventListener('keydown',e=>{
 });
 
 document.addEventListener('keyup',e=>{
-  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||/^\d$/.test(e.key))) modifier=null;
+  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||e.key==='l'||/^\d$/.test(e.key))) modifier=null;
 });
 
 
@@ -705,20 +734,25 @@ function showPerfList(){
 
 function showStudentPerf(name){
   perfTitle.textContent=name;
-  const totals={correct:0,incorrect:0,skipped:0};
-  sessionData.forEach(sess=>{const p=sess.students[name];if(p){totals.correct+=p.correct;totals.incorrect+=p.incorrect;totals.skipped+=p.skipped;}});
+  const totals={correct:0,incorrect:0,skipped:0,late:0,absences:0,present:0};
+  sessionData.forEach(sess=>{const p=sess.students[name];if(p){if(p.absent){totals.absences++;}else{totals.late+=p.late||0;totals.present++;}totals.correct+=p.correct;totals.incorrect+=p.incorrect;totals.skipped+=p.skipped;}});
   const all=totals.correct+totals.incorrect+totals.skipped;
   const pctAll=all? (totals.correct/all*100).toFixed(1):'0.0';
-  let html='<table><tr><th>Session</th><th>Correct</th><th>Incorrect</th><th>Unanswered</th><th>Total</th><th>% Correct</th></tr>';
-  html+=`<tr><td>All</td><td>${totals.correct}</td><td>${totals.incorrect}</td><td>${totals.skipped}</td><td>${all}</td><td>${pctAll}</td></tr>`;
+  const avgLate=totals.present? (totals.late/totals.present).toFixed(1):'0.0';
+  let html='<table><tr><th>Session</th><th>Correct</th><th>Incorrect</th><th>Unanswered</th><th>Late</th><th>Total</th><th>% Correct</th><th>Absent</th></tr>';
+  html+=`<tr><td>All</td><td>${totals.correct}</td><td>${totals.incorrect}</td><td>${totals.skipped}</td><td>${totals.late} (${avgLate})</td><td>${all}</td><td>${pctAll}</td><td>${totals.absences}</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const p=sess.students[name];
     if(p){
-      const total=p.correct+p.incorrect+p.skipped;
-      const percent=total? (p.correct/total*100).toFixed(1):'0.0';
-      html+=`<tr><td>${i+1}</td><td>${p.correct}</td><td>${p.incorrect}</td><td>${p.skipped}</td><td>${total}</td><td>${percent}</td></tr>`;
+      if(p.absent){
+        html+=`<tr><td>${i+1}</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td><td>Y</td></tr>`;
+      }else{
+        const total=p.correct+p.incorrect+p.skipped;
+        const percent=total? (p.correct/total*100).toFixed(1):'0.0';
+        html+=`<tr><td>${i+1}</td><td>${p.correct}</td><td>${p.incorrect}</td><td>${p.skipped}</td><td>${p.late||0}</td><td>${total}</td><td>${percent}</td><td></td></tr>`;
+      }
     }else{
-      html+=`<tr><td>${i+1}</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>`;
+      html+=`<tr><td>${i+1}</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>`;
     }
   });
   html+='</table>';
@@ -730,8 +764,16 @@ function showStudentPerf(name){
 
 function showClassPerf(){
   perfTitle.textContent='Class Summary';
-  const all={correct:0,incorrect:0,skipped:0};
-  sessionData.forEach(sess=>{all.correct+=sess.class.correct;all.incorrect+=sess.class.incorrect;all.skipped+=sess.class.skipped;});
+  const all={correct:0,incorrect:0,skipped:0,late:0,absent:0,present:0};
+  sessionData.forEach(sess=>{
+    all.correct+=sess.class.correct;all.incorrect+=sess.class.incorrect;all.skipped+=sess.class.skipped;
+    students.forEach(s=>{
+      const p=sess.students[s.name];
+      if(p){
+        if(p.absent){all.absent++;}else{all.late+=p.late||0;all.present++;}
+      }
+    });
+  });
   let activeAll=0;
   students.forEach(s=>{let sum=0;sessionData.forEach(sess=>{const p=sess.students[s.name];if(p) sum+=p.correct+p.incorrect+p.skipped;});if(sum>0) activeAll++;});
   const totalAll=all.correct+all.incorrect+all.skipped;
@@ -739,18 +781,20 @@ function showClassPerf(){
   const avgAllI=activeAll? (all.incorrect/activeAll).toFixed(1):'0.0';
   const avgAllS=activeAll? (all.skipped/activeAll).toFixed(1):'0.0';
   const pctAll=totalAll? (all.correct/totalAll*100).toFixed(1):'0.0';
-  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th></tr>';
-  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td></tr>`;
+  const avgLateAll=all.present? (all.late/all.present).toFixed(1):'0.0';
+  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th><th>Total Late</th><th>Avg Late</th><th>Absences</th></tr>';
+  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td><td>${all.late}</td><td>${avgLateAll}</td><td>${all.absent}</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const totals=sess.class;
     const total=totals.correct+totals.incorrect+totals.skipped;
-    let active=0;
-    students.forEach(s=>{const p=sess.students[s.name]; if(p&&(p.correct+p.incorrect+p.skipped)>0) active++;});
+    let active=0,present=0,lateTot=0,abs=0;
+    students.forEach(s=>{const p=sess.students[s.name]; if(p){if(p.absent){abs++;}else{lateTot+=p.late||0;present++;} if((p.correct+p.incorrect+p.skipped)>0) active++;}});
     const avgC=active? (totals.correct/active).toFixed(1):'0.0';
     const avgI=active? (totals.incorrect/active).toFixed(1):'0.0';
     const avgS=active? (totals.skipped/active).toFixed(1):'0.0';
     const percent=total? (totals.correct/total*100).toFixed(1):'0.0';
-    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td></tr>`;
+    const avgLate=present? (lateTot/present).toFixed(1):'0.0';
+    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td><td>${lateTot}</td><td>${avgLate}</td><td>${abs}</td></tr>`;
   });
   html+='</table>';
   perfContent.innerHTML=html;
@@ -760,14 +804,23 @@ function showClassPerf(){
 
 function exportPerformance(){
   const names=students.map(s=>s.name).sort((a,b)=>a.localeCompare(b));
-  const overall={correct:0,incorrect:0,skipped:0};
+  const overall={correct:0,incorrect:0,skipped:0,late:0,absent:0,present:0};
   const perStudent={};
-  names.forEach(n=>perStudent[n]={correct:0,incorrect:0,skipped:0});
+  names.forEach(n=>perStudent[n]={correct:0,incorrect:0,skipped:0,late:0,absent:0,present:0});
   sessionData.forEach(sess=>{
     overall.correct+=sess.class.correct;
     overall.incorrect+=sess.class.incorrect;
     overall.skipped+=sess.class.skipped;
-    names.forEach(n=>{const p=sess.students[n];if(p){perStudent[n].correct+=p.correct;perStudent[n].incorrect+=p.incorrect;perStudent[n].skipped+=p.skipped;}});
+    names.forEach(n=>{
+      const p=sess.students[n];
+      if(p){
+        perStudent[n].correct+=p.correct;
+        perStudent[n].incorrect+=p.incorrect;
+        perStudent[n].skipped+=p.skipped;
+        if(p.absent){perStudent[n].absent++; overall.absent++;}
+        else {perStudent[n].late+=p.late||0; perStudent[n].present++; overall.late+=p.late||0; overall.present++;}
+      }
+    });
   });
   let activeOverall=0;
   names.forEach(n=>{const t=perStudent[n];if(t.correct+t.incorrect+t.skipped>0) activeOverall++;});
@@ -776,17 +829,27 @@ function exportPerformance(){
   const avgOI=activeOverall? (overall.incorrect/activeOverall).toFixed(1):'0.0';
   const avgOS=activeOverall? (overall.skipped/activeOverall).toFixed(1):'0.0';
   const pctOverall=totalOverall? (overall.correct/totalOverall*100).toFixed(1):'0.0';
-  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct'];
-  names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}`);});
+  const avgLateO=overall.present? (overall.late/overall.present).toFixed(1):'0.0';
+  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,`Total Late:\t${overall.late}`,`Avg Late:\t${avgLateO}`,`Total Absences:\t${overall.absent}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate Total\tLate Avg\tAbsences'];
+  names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';const avgLate=t.present? (t.late/t.present).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}\t${t.late}\t${avgLate}\t${t.absent}`);});
   sessionData.forEach((sess,i)=>{
     const total=sess.class.correct+sess.class.incorrect+sess.class.skipped;
-    let active=0;names.forEach(n=>{const p=sess.students[n];if(p&&(p.correct+p.incorrect+p.skipped)>0) active++;});
+    let active=0,lateTot=0,abs=0,present=0;
+    names.forEach(n=>{const p=sess.students[n];if(p){if(p.absent){abs++;}else{lateTot+=p.late||0;present++;} if(p.correct+p.incorrect+p.skipped>0) active++;}});
     const avgC=active? (sess.class.correct/active).toFixed(1):'0.0';
     const avgI=active? (sess.class.incorrect/active).toFixed(1):'0.0';
     const avgS=active? (sess.class.skipped/active).toFixed(1):'0.0';
     const pct=total? (sess.class.correct/total*100).toFixed(1):'0.0';
-    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct');
-    names.forEach(n=>{const p=sess.students[n];if(p){const tot=p.correct+p.incorrect+p.skipped;const percent=tot? (p.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${tot}\t${percent}`);}else{lines.push(`${n}\tN/A\tN/A\tN/A\tN/A\tN/A`);}});
+    const avgLate=present? (lateTot/present).toFixed(1):'0.0';
+    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,`Total Late:\t${lateTot}`,`Avg Late:\t${avgLate}`,`Absences:\t${abs}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate\tAbsent');
+    names.forEach(n=>{
+      const p=sess.students[n];
+      if(p){
+        if(p.absent){lines.push(`${n}\t0\t0\t0\t0\t0.0\t0\tYes`);}else{const tot=p.correct+p.incorrect+p.skipped;const percent=tot? (p.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${tot}\t${percent}\t${p.late||0}\tNo`);}
+      }else{
+        lines.push(`${n}\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A`);
+      }
+    });
   });
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});
   const a=document.createElement('a');
