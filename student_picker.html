@@ -853,7 +853,23 @@ function exportPerformance(){
   const pctOverall=totalOverall? (overall.correct/totalOverall*100).toFixed(1):'0.0';
   const avgLateO=overall.present? (overall.late/overall.present).toFixed(1):'0.0';
   const avgAbs=sessionData.length? (overall.absent/sessionData.length).toFixed(1):'0.0';
-  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,`Avg Absences per Session:\t${avgAbs}`,`Avg Late:\t${avgLateO}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsences\tLate Total\tLate Avg`];
+  let lines=[
+    'Overall Summary',
+    'Class Summary',
+    `Total Qs:\t${totalOverall}`,
+    `Total Correct:\t${overall.correct}`,
+    `Avg Correct:\t${avgOC}`,
+    `Total Incorrect:\t${overall.incorrect}`,
+    `Avg Incorrect:\t${avgOI}`,
+    `Total Unanswered:\t${overall.skipped}`,
+    `Avg Unanswered:\t${avgOS}`,
+    `% Correct:\t${pctOverall}`,
+    `Avg Absences per Session:\t${avgAbs}`,
+    `Avg Late:\t${avgLateO}`,
+    '',
+    'Student Summaries',
+    'Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsences\tLate Total\tLate Avg'
+  ];
   names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';const avgLate=t.present? (t.late/t.present).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}\t${t.absent}\t${t.late}\t${avgLate}`);});
   sessionData.forEach((sess,i)=>{
     const total=sess.class.correct+sess.class.incorrect+sess.class.skipped;
@@ -864,7 +880,24 @@ function exportPerformance(){
     const avgS=active? (sess.class.skipped/active).toFixed(1):'0.0';
     const pct=total? (sess.class.correct/total*100).toFixed(1):'0.0';
     const avgLate=present? (lateTot/present).toFixed(1):'0.0';
-    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,`Absences:\t${abs}`,`Avg Late:\t${avgLate}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsent\tLate`);
+    lines.push(
+      '',
+      `Session ${i+1}`,
+      'Class Summary',
+      `Total Qs:\t${total}`,
+      `Total Correct:\t${sess.class.correct}`,
+      `Avg Correct:\t${avgC}`,
+      `Total Incorrect:\t${sess.class.incorrect}`,
+      `Avg Incorrect:\t${avgI}`,
+      `Total Unanswered:\t${sess.class.skipped}`,
+      `Avg Unanswered:\t${avgS}`,
+      `% Correct:\t${pct}`,
+      `Absences:\t${abs}`,
+      `Avg Late:\t${avgLate}`,
+      '',
+      'Student Summaries',
+      'Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsent\tLate'
+    );
     names.forEach(n=>{
       const p=sess.students[n];
       if(p){
