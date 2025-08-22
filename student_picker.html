@@ -50,6 +50,9 @@ button:hover{background:#eee;}
 #studentOverlay .name .mult{font-size:0.5em;margin-left:8px;}
 #studentInput{width:80%;margin:10px auto 0;display:block;padding:8px;box-sizing:border-box;}
 
+/* Performance overlay */
+#performanceOverlay .perf-name{cursor:pointer;padding:5px 0;}
+
 /* End overlay */
 #endOverlay .content{background:#fff;padding:40px;border-radius:8px;text-align:center;}
 
@@ -80,6 +83,8 @@ button:hover{background:#eee;}
 <button id="pickBtn">Pick Student</button>
 <div id="countdown"></div>
 <div id="stats" style="position:fixed;bottom:5px;left:5px;font-size:0.8rem;"></div>
+<button id="perfBtn" style="position:fixed;bottom:40px;right:10px;">Performance</button>
+<button id="perfExport" style="position:fixed;bottom:10px;right:10px;">Export</button>
 
 <!-- Import/Export Popup -->
 <div id="dataBox" class="popup hidden" style="top:60px;left:20px;">
@@ -156,8 +161,21 @@ button:hover{background:#eee;}
       <li>, and .: history</li>
       <li>/: soft reset</li>
       <li>?: hard reset</li>
+      <li>z/x/s+click: mark correct/incorrect/unanswered</li>
+      <li>Shift+Esc: reset counts</li>
       <li>i: controls</li>
     </ul>
+  </div>
+</div>
+
+<!-- Performance Overlay -->
+<div id="performanceOverlay" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="perfClose">✖</span>
+    <button id="perfClassBtn" style="position:absolute;top:10px;left:10px;">Class</button>
+    <h2 id="perfTitle">Performance</h2>
+    <div id="perfContent"></div>
+    <button id="perfBack" style="display:none;margin-top:10px;">Back</button>
   </div>
 </div>
 
@@ -172,6 +190,7 @@ let remaining=[]; // for noRepeat mode
 let usedCounts={}; // times each student has been used
 let modifier=null; // for student overlay
 let forcedQueue=[]; // scheduled picks
+let performance={}; // correct/incorrect/unanswered tracking
 
 const result=document.getElementById('result');
 const pickBtn=document.getElementById('pickBtn');
@@ -181,6 +200,14 @@ const countSetting=document.getElementById('countSetting');
 const countdown=document.getElementById('countdown');
 const gameTitle=document.getElementById('gameTitle');
 const stats=document.getElementById('stats');
+const perfBtn=document.getElementById('perfBtn');
+const perfExport=document.getElementById('perfExport');
+const perfOverlay=document.getElementById('performanceOverlay');
+const perfClose=document.getElementById('perfClose');
+const perfContent=document.getElementById('perfContent');
+const perfTitle=document.getElementById('perfTitle');
+const perfBack=document.getElementById('perfBack');
+const perfClassBtn=document.getElementById('perfClassBtn');
 
 // Import/Export popup
 const dataBox=document.getElementById('dataBox');
@@ -215,6 +242,26 @@ const retryBtn=document.getElementById('retryBtn');
 const infoBox=document.getElementById('infoBox');
 const infoClose=document.getElementById('infoClose');
 
+const keyFlags={z:false,x:false,s:false};
+document.addEventListener('keydown',e=>{if(keyFlags.hasOwnProperty(e.key)) keyFlags[e.key]=true;});
+document.addEventListener('keyup',e=>{if(keyFlags.hasOwnProperty(e.key)) keyFlags[e.key]=false;});
+
+result.addEventListener('click',e=>{
+  if(!e.target.classList.contains('picked')) return;
+  const name=e.target.textContent;
+  performance[name]=performance[name]||{correct:0,incorrect:0,skipped:0};
+  if(keyFlags.z){
+    if(e.shiftKey) performance[name].correct=Math.max(0,performance[name].correct-1);
+    else performance[name].correct++;
+  }else if(keyFlags.x){
+    if(e.shiftKey) performance[name].incorrect=Math.max(0,performance[name].incorrect-1);
+    else performance[name].incorrect++;
+  }else if(keyFlags.s){
+    if(e.shiftKey) performance[name].skipped=Math.max(0,performance[name].skipped-1);
+    else performance[name].skipped++;
+  }
+});
+
 updateCounts();
 
 function toggle(el){el.classList.toggle('hidden');}
@@ -245,8 +292,13 @@ function softReset(){
 
 function hardReset(){
   students=[];
+  performance={};
   renderStudents();
   softReset();
+}
+
+function resetPerformance(){
+  Object.keys(performance).forEach(n=>performance[n]={correct:0,incorrect:0,skipped:0});
 }
 
 // Dragging for data box
@@ -258,7 +310,7 @@ document.addEventListener('mouseup',()=>dragging=false);
 dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
 dataClose.addEventListener('mousedown',e=>e.stopPropagation());
 dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
-importBtn.addEventListener('click',()=>{try{const text=dataArea.value.trim();const [title,rest]=text.split('|');gameTitle.textContent=title||'Class';students=rest?rest.split(',').filter(Boolean).map(p=>{const [n,g]=p.split(':');return {name:n,gender:(g||'u'),weight:1,disabled:false};}):[];renderStudents();softReset();dataBox.classList.add('hidden');}catch(e){alert('Invalid data');}});
+importBtn.addEventListener('click',()=>{try{const text=dataArea.value.trim();const [title,rest]=text.split('|');gameTitle.textContent=title||'Class';students=rest?rest.split(',').filter(Boolean).map(p=>{const [n,g]=p.split(':');return {name:n,gender:(g||'u'),weight:1,disabled:false};}):[];performance={};students.forEach(s=>performance[s.name]={correct:0,incorrect:0,skipped:0});renderStudents();softReset();dataBox.classList.add('hidden');}catch(e){alert('Invalid data');}});
 exportBtn.addEventListener('click',()=>{const title=gameTitle.textContent.trim()||'Class';const data=students.map(s=>`${s.name}:${s.gender}`).join(',');dataArea.value=`${title}|${data}`;dataArea.select();document.execCommand('copy');});
 
 // Settings controls
@@ -303,6 +355,20 @@ function updateCounts(){
   stats.style.color=(total===absent+present)?'#000':'red';
 }
 
+function playBeep(){
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.type='sine';
+  osc.frequency.value=600;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  gain.gain.setValueAtTime(0.2,ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+  osc.stop(ctx.currentTime+0.5);
+}
+
 function spawnFirework(e){
   const fw=document.createElement('div');
   fw.className='firework';
@@ -323,6 +389,7 @@ function spawnFirework(e){
 }
 
 function renderStudents(){
+  students.forEach(s=>{if(!performance[s.name]) performance[s.name]={correct:0,incorrect:0,skipped:0};});
   const males=students.filter(s=>s.gender==='m').sort((a,b)=>a.name.localeCompare(b.name));
   const females=students.filter(s=>s.gender==='f').sort((a,b)=>a.name.localeCompare(b.name));
   const unknowns=students.filter(s=>s.gender==='u').sort((a,b)=>a.name.localeCompare(b.name));
@@ -338,7 +405,11 @@ function renderStudents(){
 
 studentInput.addEventListener('keydown',e=>{
   if(e.key==='Enter' && studentInput.value.trim()){
-    students.push({name:studentInput.value.trim(),gender:'u',weight:1,disabled:false});studentInput.value='';renderStudents();
+    const n=studentInput.value.trim();
+    students.push({name:n,gender:'u',weight:1,disabled:false});
+    performance[n]={correct:0,incorrect:0,skipped:0};
+    studentInput.value='';
+    renderStudents();
   }
 });
 
@@ -352,13 +423,20 @@ studentOverlay.addEventListener('click',e=>{
     }else if(modifier==='f') students[idx].gender='f';
     else if(modifier==='m') students[idx].gender='m';
     else if(modifier && /^\d$/.test(modifier)) students[idx].weight=parseInt(modifier);
-    else students.splice(idx,1);
+    else {students.splice(idx,1);delete performance[name];}
     renderStudents();
   }
 });
 
 studentClose.addEventListener('click',()=>{studentOverlay.classList.add('hidden');modifier=null;});
 infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
+
+perfBtn.addEventListener('click',()=>{showPerfList();perfOverlay.classList.remove('hidden');});
+perfClose.addEventListener('click',()=>perfOverlay.classList.add('hidden'));
+perfBack.addEventListener('click',showPerfList);
+perfClassBtn.addEventListener('click',showClassPerf);
+perfContent.addEventListener('click',e=>{if(e.target.classList.contains('perf-name')) showStudentPerf(e.target.dataset.name);});
+perfExport.addEventListener('click',exportPerformance);
 
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
@@ -378,6 +456,8 @@ document.addEventListener('keydown',e=>{
       settingsBox.classList.add('hidden');
       dataBox.classList.add('hidden');
       infoBox.classList.add('hidden');
+      perfOverlay.classList.add('hidden');
+      if(e.shiftKey){resetPerformance();softReset();}
     }
     return;
   }
@@ -414,6 +494,7 @@ pickBtn.addEventListener('click',e=>{
       forcedQueue.push({name,rounds});
     }
     spawnFirework(e);
+    playBeep();
   }
   performPick();
 });
@@ -483,6 +564,48 @@ function performPick(tempGender=null,tempCount=null){
     markUsed();
     if(!remaining.length) endOverlay.classList.remove('hidden');
   }
+}
+
+function showPerfList(){
+  perfTitle.textContent='Performance';
+  perfBack.style.display='none';
+  perfContent.innerHTML=students.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<div class="perf-name" data-name="${s.name}">${s.name}</div>`).join('');
+}
+
+function showStudentPerf(name){
+  const p=performance[name]||{correct:0,incorrect:0,skipped:0};
+  const total=p.correct+p.incorrect+p.skipped;
+  const denom=p.incorrect+p.skipped;
+  const percent=denom? (p.correct/denom*100).toFixed(1) : '0.0';
+  perfTitle.textContent=name;
+  perfContent.innerHTML=`<p>Correct: ${p.correct}</p><p>Incorrect: ${p.incorrect}</p><p>Unanswered: ${p.skipped}</p><p>Total: ${total}</p><p>% Correct: ${percent}</p>`;
+  perfBack.style.display='block';
+}
+
+function showClassPerf(){
+  let totalC=0,totalI=0,totalS=0;
+  students.forEach(s=>{const p=performance[s.name]||{correct:0,incorrect:0,skipped:0};totalC+=p.correct;totalI+=p.incorrect;totalS+=p.skipped;});
+  const total=totalC+totalI+totalS;
+  const avgC=(totalC/students.length||0).toFixed(1);
+  const avgI=(totalI/students.length||0).toFixed(1);
+  const avgS=(totalS/students.length||0).toFixed(1);
+  const denom=totalI+totalS;
+  const percent=denom? (totalC/denom*100).toFixed(1) : '0.0';
+  perfTitle.textContent='Class Summary';
+  perfContent.innerHTML=`<p>Total Qs: ${total}</p><p>Total Correct: ${totalC}</p><p>Avg Correct: ${avgC}</p><p>Total Incorrect: ${totalI}</p><p>Avg Incorrect: ${avgI}</p><p>Total Unanswered: ${totalS}</p><p>Avg Unanswered: ${avgS}</p><p>% Correct: ${percent}</p>`;
+  perfBack.style.display='block';
+}
+
+function exportPerformance(){
+  const names=students.map(s=>s.name).sort((a,b)=>a.localeCompare(b));
+  let lines=['Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct'];
+  names.forEach(n=>{const p=performance[n]||{correct:0,incorrect:0,skipped:0};const total=p.correct+p.incorrect+p.skipped;const denom=p.incorrect+p.skipped;const percent=denom? (p.correct/denom*100).toFixed(1) : '0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${total}\t${percent}`);});
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='performance.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 resetBtn.addEventListener('click',()=>{softReset();});
