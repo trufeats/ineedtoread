@@ -23,6 +23,7 @@
     --shimX: 0px;
     /* Global rainbow hue (driven by JS) */
     --rainbowHue: 0;
+    --priceTop: 0px;
   }
   html[data-theme="dark"]{
     --bg:#0b0f14; --ink:#e5e7eb; --muted:#94a3b8; --header-bg:#0f172a; --table-border:#1f2937;
@@ -37,11 +38,13 @@
 
   .themeToggle{position:fixed;top:10px;right:14px;border:1px solid var(--table-border);background:var(--header-bg);color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;font-size:13px}
 
-  .table-wrap{overflow:auto;border-radius:var(--radius);max-height:80vh}
+  .table-wrap{overflow-x:auto;border-radius:var(--radius)}
   table{min-width:980px;border-collapse:separate;border-spacing:0;width:100%;background:var(--bg);border:1px solid var(--table-border);border-radius:var(--radius);table-layout:fixed}
   th,td{border-bottom:1px solid var(--table-border);padding:0;vertical-align:top}
-  thead th{position:sticky;top:0;background:var(--header-bg);z-index:5}
-  th:first-child{position:sticky;left:0;background:var(--header-bg);z-index:6}
+  thead th{position:sticky;top:0;background:var(--header-bg);z-index:40}
+  th:first-child{position:sticky;left:0;background:var(--header-bg);z-index:50}
+  .price-row th,.price-row td{position:sticky;top:var(--priceTop);background:var(--bg);z-index:30}
+  .price-row th:first-child{z-index:40}
 
   /* Keep row header column fixed width */
   th[aria-label="Features"], .row-hdr{width:260px;min-width:260px;max-width:260px}
@@ -130,7 +133,7 @@
         </thead>
         <tbody>
           <!-- PRICE (special cycling label + dynamic values) -->
-          <tr id="price-row">
+          <tr id="price-row" class="price-row">
             <th class="cell row-hdr shimmer" data-row="price" scope="row"><span class="row-title" data-rowtitle="price">Current Prices</span><div class="hint" data-role="price-hint">(reveal future prices)</div></th>
             <td data-row="price" data-col="prime"><div class="cell center shimmer"><span class="price">Coming Soon</span></div></td>
             <td data-row="price" data-col="select"><div class="cell center shimmer"><span class="price">Coming Soon</span></div></td>
@@ -234,6 +237,10 @@
     const hoverCard = document.getElementById('hoverCard');
     const typingSpan = hoverCard.querySelector('.typing');
     const masterToggle = document.getElementById('masterToggle');
+
+    // Set sticky offset for price row below header row
+    const headerHeight = table.querySelector('thead').offsetHeight;
+    root.style.setProperty('--priceTop', headerHeight + 'px');
 
     // Theme setup
     function setTheme(mode){
