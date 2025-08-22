@@ -45,6 +45,8 @@ let draggingHud = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
 let shiftDown = false;
+let cursorTrailActive = false;
+let trailType = '';
 
 function showMultiplier(text){
   multiplierOverlay.textContent = text;
@@ -128,14 +130,22 @@ function teamClicked(i, e){
   const gameRect = gameArea.getBoundingClientRect();
   const x = e.clientX - gameRect.left;
   const y = e.clientY - gameRect.top;
+  const proceed = () => {
+    if(ball.classList.contains('black') || ball.classList.contains('meteor')){
+      rumbleScreen(ball.classList.contains('meteor'));
+    }
+    currentTeam = i;
+    awaitingTeamSelection = false;
+    controls.classList.remove('hidden');
+    moveBall(x, y);
+    setTimeout(startTimer, BALL_SPEED);
+  };
   if(ball.classList.contains('black') || ball.classList.contains('meteor')){
-    rumbleScreen(ball.classList.contains('meteor'));
+    stopCursorTrail();
+    engulfAt(e.clientX, e.clientY, proceed);
+  } else {
+    proceed();
   }
-  currentTeam = i;
-  awaitingTeamSelection = false;
-  controls.classList.remove('hidden');
-  moveBall(x, y);
-  setTimeout(startTimer, BALL_SPEED);
 }
 
 checkBtn.addEventListener('click', () => {
@@ -195,6 +205,7 @@ function renderEndOverlay(winner){
     const mark = document.createElement('div');
     mark.className = 'watermark ' + elements[i];
     const score = document.createElement('div');
+    score.className = 'final-score';
     score.textContent = t.score;
     ft.appendChild(mark);
     ft.appendChild(score);
@@ -230,17 +241,20 @@ function moveBall(x, y){
 function maybeMutateBall(){
   const r = Math.random();
   ball.classList.remove('black','meteor');
+  stopCursorTrail();
   if(r < 0.025){
-    ball.classList.add('meteor');
+    flashScreen('burgundy');
+    showMultiplier('x3');
     setTimeout(() => {
-      flashScreen('burgundy');
-      showMultiplier('x3');
+      ball.classList.add('meteor');
+      startCursorTrail('meteor');
     },1000);
   } else if(r < 0.105){
-    ball.classList.add('black');
+    flashScreen('charcoal');
+    showMultiplier('x2');
     setTimeout(() => {
-      flashScreen('charcoal');
-      showMultiplier('x2');
+      ball.classList.add('black');
+      startCursorTrail('black');
     },1000);
   }
 }
@@ -264,6 +278,38 @@ function rumbleScreen(strong=false){
     document.body.classList.remove(strong ? 'rumble-strong' : 'rumble');
   }, duration);
 }
+
+function startCursorTrail(type){
+  trailType = type;
+  cursorTrailActive = true;
+}
+
+function stopCursorTrail(){
+  cursorTrailActive = false;
+}
+
+function engulfAt(cx, cy, cb){
+  const div = document.createElement('div');
+  div.className = 'engulf';
+  div.style.left = cx + 'px';
+  div.style.top = cy + 'px';
+  document.body.appendChild(div);
+  setTimeout(() => {
+    div.classList.add('fade');
+    setTimeout(() => { div.remove(); cb(); }, 300);
+  }, 600);
+}
+
+document.addEventListener('mousemove', (e) => {
+  if(cursorTrailActive){
+    const t = document.createElement('div');
+    t.className = 'dark-trail' + (trailType === 'meteor' ? ' meteor' : '');
+    t.style.left = e.clientX + 'px';
+    t.style.top = e.clientY + 'px';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 600);
+  }
+});
 
 function startTimer(){
   stopTimer();

@@ -511,8 +511,9 @@ body.rumble-strong {
 
 #endOverlay #finalScores {
   display: flex;
-  gap: 40px;
+  gap: 80px;
   z-index: 2001;
+  justify-content: center;
 }
 
 #endOverlay .final-team {
@@ -523,11 +524,19 @@ body.rumble-strong {
 }
 
 #endOverlay .final-team .watermark {
-  width: 160px;
-  height: 160px;
-  border-width: 8px;
-  font-size: 4em;
+  position: static;
+  transform: none;
+  width: 200px;
+  height: 200px;
+  border-width: 10px;
+  font-size: 5em;
   opacity: 0.5;
+  margin-bottom: 10px;
+}
+
+#endOverlay .final-team .final-score {
+  font-size: 3em;
+  margin-top: 10px;
 }
 
 #endOverlay .final-team .crown {
@@ -548,11 +557,59 @@ body.rumble-strong {
   line-height: 1.2;
   z-index: 2000;
   color: #fff;
+  pointer-events: none;
 }
 
 #endOverlay #restart {
   position: absolute;
   bottom: 40px;
-  font-size: 4em;
+  font-size: 6em;
   cursor: pointer;
+}
+
+.dark-trail {
+  position: fixed;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.8), rgba(80,0,0,0.8));
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: darkTrail 0.6s forwards;
+  z-index: 1500;
+}
+
+.dark-trail.meteor {
+  background: radial-gradient(circle, rgba(80,0,0,0.8), rgba(255,0,0,0.8));
+}
+
+@keyframes darkTrail {
+  from { opacity: 0.8; }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+}
+
+.engulf {
+  position: fixed;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.9);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1800;
+  animation: engulf 0.6s forwards;
+}
+
+@keyframes engulf {
+  from { width: 0; height: 0; opacity: 1; }
+  to { width: 3000px; height: 3000px; opacity: 1; }
+}
+
+.engulf.fade {
+  animation: fadeOut 0.3s forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
