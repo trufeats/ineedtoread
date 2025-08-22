@@ -49,6 +49,7 @@ let shiftDown = false;
 let cursorTrailActive = false;
 let trailType = '';
 let lastTeam = null;
+let forceReboundNext = false;
 
 function showMultiplier(text){
   multiplierOverlay.textContent = text;
@@ -148,13 +149,16 @@ function teamClicked(i, e){
     const startTimeout = setTimeout(startTimer, BALL_SPEED);
     if(lastTeam !== null){
       setTimeout(() => {
-        if(Math.random() < 0.01){
+        if(forceReboundNext || Math.random() < 0.01){
           clearTimeout(startTimeout);
           currentTeam = lastTeam;
           moveBall(startX, startY);
           setTimeout(startTimer, BALL_SPEED);
         }
+        forceReboundNext = false;
       }, BALL_SPEED / 2);
+    } else {
+      forceReboundNext = false;
     }
   };
 
@@ -465,7 +469,8 @@ document.addEventListener('keydown', (e) => {
   if(e.shiftKey && awaitingTeamSelection && timeDisplay.textContent === '\u221E'){
     if(e.code === 'Digit1'){ applyMutation('black'); return; }
     if(e.code === 'Digit2'){ applyMutation('meteor'); return; }
-    if(e.code === 'Digit3'){ applyMutation('blackhole'); return; }
+    if(e.code === 'Digit3'){ forceReboundNext = true; return; }
+    if(e.code === 'Digit4'){ applyMutation('blackhole'); return; }
   }
   if(key === 'z'){
     resetHud();
