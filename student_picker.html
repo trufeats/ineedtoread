@@ -5,7 +5,12 @@
 <title>Student Picker</title>
 <style>
 /* Basic layout and typography */
-body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:linear-gradient(-45deg,#1a2a6c,#b21f1f,#fdbb2d,#1a2a6c);background-size:400% 400%;animation:cosmic 20s ease infinite;}
+body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}
+body.theme1{background:linear-gradient(-45deg,#1a2a6c,#b21f1f,#fdbb2d,#1a2a6c);background-size:400% 400%;animation:cosmic 20s ease infinite;}
+body.theme2{background:linear-gradient(60deg,#abecd6,#fbed96);background-size:400% 400%;animation:cosmic2 20s ease infinite;}
+body.theme3{background:linear-gradient(45deg,#ee7752,#e73c7e,#23a6d5,#23d5ab);background-size:400% 400%;animation:cosmic3 15s ease infinite;}
+body.theme4{background:radial-gradient(circle,#ff9a9e,#fad0c4);background-size:200% 200%;animation:cosmic4 15s ease infinite;}
+body.theme5{background:#222;}
 button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius:4px;transition:background 0.3s;}
 button:hover{background:#eee;}
 #pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
@@ -46,7 +51,7 @@ button:hover{background:#eee;}
 #studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
 #studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;transition:background 0.3s;}
 #studentOverlay .name:hover{background:#eee;}
-#studentOverlay .name.inactive{color:#888;}
+#studentOverlay .name.inactive{color:#ddd;}
 #studentOverlay .name .mult{font-size:0.5em;margin-left:8px;}
 #studentInput{width:80%;margin:10px auto 0;display:block;padding:8px;box-sizing:border-box;}
 
@@ -64,6 +69,9 @@ button:hover{background:#eee;}
 @keyframes shine{from{left:-100%;}to{left:100%;}}
 @keyframes pop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
 @keyframes cosmic{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes cosmic2{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes cosmic3{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes cosmic4{0%{background-position:0% 0%;}50%{background-position:100% 100%;}100%{background-position:0% 0%;}}
 .firework{position:fixed;pointer-events:none;}
 .firework span{position:absolute;width:8px;height:8px;border-radius:50%;background:gold;animation:particle 600ms ease-out forwards;}
 @keyframes particle{from{transform:translate(0,0);opacity:1;}to{transform:translate(var(--x),var(--y));opacity:0;}}
@@ -75,7 +83,7 @@ button:hover{background:#eee;}
 
 </style>
 </head>
-<body>
+<body class="theme1">
 <button id="dataToggle" class="top-btn">☰</button>
 <button id="settingsToggle" class="top-btn">⚙️</button>
 <h1 id="gameTitle" contenteditable="true">Class</h1>
@@ -159,6 +167,7 @@ button:hover{background:#eee;}
       <li>m/f/r: pick gender</li>
       <li>1/2/3: pick count</li>
       <li>. and /: history</li>
+      <li>, and / in list: undo/redo</li>
       <li>?: hard reset</li>
       <li>z/x/s+click: mark correct/incorrect/unanswered</li>
       <li>Shift+Esc: reset counts</li>
@@ -193,8 +202,34 @@ let modifier=null; // for student overlay
 let forcedQueue=[]; // scheduled picks
 let sessionData=[{students:{},class:{correct:0,incorrect:0,skipped:0}}];
 let performance=sessionData[0].students;
+let studentHistory=[];
+let studentHistoryIndex=-1;
+let themeIndex=1;
 
 function currentSession(){return sessionData[sessionData.length-1];}
+
+function saveStudentState(){
+  studentHistory=studentHistory.slice(0,studentHistoryIndex+1);
+  studentHistory.push(JSON.parse(JSON.stringify({students,sessionData,usedCounts})));
+  studentHistoryIndex++;
+}
+
+function loadStudentState(){
+  const state=studentHistory[studentHistoryIndex];
+  students=JSON.parse(JSON.stringify(state.students));
+  sessionData=JSON.parse(JSON.stringify(state.sessionData));
+  usedCounts=JSON.parse(JSON.stringify(state.usedCounts));
+  performance=currentSession().students;
+  renderStudents();
+}
+
+function undoStudent(){
+  if(studentHistoryIndex>0){studentHistoryIndex--;loadStudentState();}
+}
+
+function redoStudent(){
+  if(studentHistoryIndex<studentHistory.length-1){studentHistoryIndex++;loadStudentState();}
+}
 
 const result=document.getElementById('result');
 const pickBtn=document.getElementById('pickBtn');
@@ -298,6 +333,9 @@ function hardReset(){
   performance=sessionData[0].students;
   renderStudents();
   softReset();
+  studentHistory=[];
+  studentHistoryIndex=-1;
+  saveStudentState();
 }
 
 function resetPerformance(){
@@ -328,6 +366,9 @@ importBtn.addEventListener('click',()=>{
     performance=currentSession().students;
     renderStudents();
     softReset();
+    studentHistory=[];
+    studentHistoryIndex=-1;
+    saveStudentState();
     dataBox.classList.add('hidden');
   }catch(e){alert('Invalid data');}
 });
@@ -439,6 +480,7 @@ studentInput.addEventListener('keydown',e=>{
     performance[n]={correct:0,incorrect:0,skipped:0};
     studentInput.value='';
     renderStudents();
+    saveStudentState();
   }
 });
 
@@ -477,6 +519,7 @@ studentOverlay.addEventListener('click',e=>{
       forcedQueue=forcedQueue.filter(n=>n!==name);
     }
     renderStudents();
+    saveStudentState();
   }
 });
 
@@ -490,13 +533,27 @@ perfClassBtn.addEventListener('click',showClassPerf);
 perfContent.addEventListener('click',e=>{if(e.target.classList.contains('perf-name')) showStudentPerf(e.target.dataset.name);});
 perfExport.addEventListener('click',exportPerformance);
 
+saveStudentState();
+
+document.body.addEventListener('click',e=>{
+  if(e.shiftKey && e.target===document.body){
+    themeIndex=themeIndex%5+1;
+    document.body.className='theme'+themeIndex;
+  }
+});
+
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
+  if(!studentOverlay.classList.contains('hidden') && e.target!==studentInput){
+    if(e.key===','){e.preventDefault();undoStudent();return;}
+    if(e.key==='/'){e.preventDefault();redoStudent();return;}
+  }
   if(e.key==='Escape'){
     if(!studentOverlay.classList.contains('hidden')){
       if(e.shiftKey){
         students.forEach(s=>s.weight=1);
         renderStudents();
+        saveStudentState();
         modifier=null;
       }else if(document.activeElement===studentInput){
         studentInput.blur();
@@ -648,7 +705,12 @@ function showPerfList(){
 
 function showStudentPerf(name){
   perfTitle.textContent=name;
+  const totals={correct:0,incorrect:0,skipped:0};
+  sessionData.forEach(sess=>{const p=sess.students[name];if(p){totals.correct+=p.correct;totals.incorrect+=p.incorrect;totals.skipped+=p.skipped;}});
+  const all=totals.correct+totals.incorrect+totals.skipped;
+  const pctAll=all? (totals.correct/all*100).toFixed(1):'0.0';
   let html='<table><tr><th>Session</th><th>Correct</th><th>Incorrect</th><th>Unanswered</th><th>Total</th><th>% Correct</th></tr>';
+  html+=`<tr><td>All</td><td>${totals.correct}</td><td>${totals.incorrect}</td><td>${totals.skipped}</td><td>${all}</td><td>${pctAll}</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const p=sess.students[name];
     if(p){
@@ -668,7 +730,17 @@ function showStudentPerf(name){
 
 function showClassPerf(){
   perfTitle.textContent='Class Summary';
+  const all={correct:0,incorrect:0,skipped:0};
+  sessionData.forEach(sess=>{all.correct+=sess.class.correct;all.incorrect+=sess.class.incorrect;all.skipped+=sess.class.skipped;});
+  let activeAll=0;
+  students.forEach(s=>{let sum=0;sessionData.forEach(sess=>{const p=sess.students[s.name];if(p) sum+=p.correct+p.incorrect+p.skipped;});if(sum>0) activeAll++;});
+  const totalAll=all.correct+all.incorrect+all.skipped;
+  const avgAllC=activeAll? (all.correct/activeAll).toFixed(1):'0.0';
+  const avgAllI=activeAll? (all.incorrect/activeAll).toFixed(1):'0.0';
+  const avgAllS=activeAll? (all.skipped/activeAll).toFixed(1):'0.0';
+  const pctAll=totalAll? (all.correct/totalAll*100).toFixed(1):'0.0';
   let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th></tr>';
+  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const totals=sess.class;
     const total=totals.correct+totals.incorrect+totals.skipped;
@@ -687,10 +759,35 @@ function showClassPerf(){
 }
 
 function exportPerformance(){
-  const sess=currentSession();
   const names=students.map(s=>s.name).sort((a,b)=>a.localeCompare(b));
-  let lines=['Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct'];
-  names.forEach(n=>{const p=sess.students[n]||{correct:0,incorrect:0,skipped:0};const total=p.correct+p.incorrect+p.skipped;const percent=total? (p.correct/total*100).toFixed(1) : '0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${total}\t${percent}`);});
+  const overall={correct:0,incorrect:0,skipped:0};
+  const perStudent={};
+  names.forEach(n=>perStudent[n]={correct:0,incorrect:0,skipped:0});
+  sessionData.forEach(sess=>{
+    overall.correct+=sess.class.correct;
+    overall.incorrect+=sess.class.incorrect;
+    overall.skipped+=sess.class.skipped;
+    names.forEach(n=>{const p=sess.students[n];if(p){perStudent[n].correct+=p.correct;perStudent[n].incorrect+=p.incorrect;perStudent[n].skipped+=p.skipped;}});
+  });
+  let activeOverall=0;
+  names.forEach(n=>{const t=perStudent[n];if(t.correct+t.incorrect+t.skipped>0) activeOverall++;});
+  const totalOverall=overall.correct+overall.incorrect+overall.skipped;
+  const avgOC=activeOverall? (overall.correct/activeOverall).toFixed(1):'0.0';
+  const avgOI=activeOverall? (overall.incorrect/activeOverall).toFixed(1):'0.0';
+  const avgOS=activeOverall? (overall.skipped/activeOverall).toFixed(1):'0.0';
+  const pctOverall=totalOverall? (overall.correct/totalOverall*100).toFixed(1):'0.0';
+  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct'];
+  names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}`);});
+  sessionData.forEach((sess,i)=>{
+    const total=sess.class.correct+sess.class.incorrect+sess.class.skipped;
+    let active=0;names.forEach(n=>{const p=sess.students[n];if(p&&(p.correct+p.incorrect+p.skipped)>0) active++;});
+    const avgC=active? (sess.class.correct/active).toFixed(1):'0.0';
+    const avgI=active? (sess.class.incorrect/active).toFixed(1):'0.0';
+    const avgS=active? (sess.class.skipped/active).toFixed(1):'0.0';
+    const pct=total? (sess.class.correct/total*100).toFixed(1):'0.0';
+    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct');
+    names.forEach(n=>{const p=sess.students[n];if(p){const tot=p.correct+p.incorrect+p.skipped;const percent=tot? (p.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${tot}\t${percent}`);}else{lines.push(`${n}\tN/A\tN/A\tN/A\tN/A\tN/A`);}});
+  });
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
