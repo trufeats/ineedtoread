@@ -407,6 +407,26 @@ html, body {
   display: none;
 }
 
+#wordLog {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.6);
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 400;
+}
+
+#wordLog .word {
+  cursor: pointer;
+  margin-right: 8px;
+}
+
 #screenOverlay.charcoal {
   background: rgba(54,69,79,0.8);
 }

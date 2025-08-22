@@ -66,29 +66,24 @@ setupScreen.querySelectorAll('button').forEach(btn => {
   });
 });
 
-function rayToRect(c, angle){
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
-  let t = Infinity;
-  if(dx !== 0){
-    const tx = dx > 0 ? (1 - c.x)/dx : (0 - c.x)/dx;
-    if(tx > 0) t = Math.min(t, tx);
-  }
-  if(dy !== 0){
-    const ty = dy > 0 ? (1 - c.y)/dy : (0 - c.y)/dy;
-    if(ty > 0) t = Math.min(t, ty);
-  }
-  return {x: c.x + dx*t, y: c.y + dy*t};
-}
-
-function sectorClip(i, n){
-  const start = -Math.PI/2 + (2*Math.PI/n)*i;
-  const end = -Math.PI/2 + (2*Math.PI/n)*(i+1);
-  const c = {x:0.5, y:0.5};
-  const p1 = rayToRect(c, start);
-  const p2 = rayToRect(c, end);
-  return `polygon(${c.x*100}% ${c.y*100}%, ${p1.x*100}% ${p1.y*100}%, ${p2.x*100}% ${p2.y*100}%)`;
-}
+// Precomputed clip-path polygons so team regions always fill the screen
+const CLIPS = {
+  2: [
+    'polygon(0 0, 100% 0, 0 100%)',               // top-left
+    'polygon(100% 100%, 100% 0, 0 100%)'           // bottom-right
+  ],
+  3: [
+    'polygon(50% 50%, 0 0, 100% 0)',              // top
+    'polygon(50% 50%, 100% 0, 100% 100%)',         // right
+    'polygon(50% 50%, 100% 100%, 0 100%)'          // bottom/left
+  ],
+  4: [
+    'polygon(50% 50%, 0 0, 100% 0)',              // top
+    'polygon(50% 50%, 100% 0, 100% 100%)',         // right
+    'polygon(50% 50%, 100% 100%, 0 100%)',         // bottom
+    'polygon(50% 50%, 0 100%, 0 0)'                // left
+  ]
+};
 
 function initTeams(num) {
   teams = [];
@@ -96,15 +91,15 @@ function initTeams(num) {
   gameArea.innerHTML = '';
   const colors = ['red','blue','green','white'];
   const positions = {
-    2: [{x:33, y:33},{x:66, y:66}],
-    3: [{x:50, y:17},{x:17, y:50},{x:83, y:50}],
-    4: [{x:17, y:50},{x:50, y:17},{x:83, y:50},{x:50, y:83}]
+    2: [{x:25, y:25},{x:75, y:75}],
+    3: [{x:50, y:25},{x:75, y:75},{x:25, y:75}],
+    4: [{x:25, y:25},{x:75, y:25},{x:75, y:75},{x:25, y:75}]
   };
   for(let i=0;i<num;i++){
     const el = document.createElement('div');
     el.className = 'team ' + colors[i];
     el.dataset.index = i;
-    el.style.clipPath = sectorClip(i, num);
+    el.style.clipPath = CLIPS[num][i];
     const score = document.createElement('div');
     score.className = 'score';
     score.textContent = '0';
