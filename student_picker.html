@@ -62,7 +62,7 @@ button:hover{background:#eee;}
 @keyframes pop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
 @keyframes cosmic{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 .firework{position:fixed;pointer-events:none;}
-.firework span{position:absolute;width:4px;height:4px;border-radius:50%;background:gold;animation:particle 600ms ease-out forwards;}
+.firework span{position:absolute;width:8px;height:8px;border-radius:50%;background:gold;animation:particle 600ms ease-out forwards;}
 @keyframes particle{from{transform:translate(0,0);opacity:1;}to{transform:translate(var(--x),var(--y));opacity:0;}}
 
 #studentOverlay .column.male .name::after,
@@ -211,10 +211,11 @@ const infoClose=document.getElementById('infoClose');
 function toggle(el){el.classList.toggle('hidden');}
 
 function buildRemaining(preserve=false){
+  const old=preserve?remaining.slice():[];
   remaining=[];
   const used={};
   if(preserve){
-    history.forEach(p=>p.forEach(n=>{used[n]=(used[n]||0)+1;}));
+    old.forEach(s=>{used[s.name]=(used[s.name]||0)+1;});
   }
   students.forEach(s=>{
     if(s.disabled) return;
@@ -293,11 +294,11 @@ function spawnFirework(e){
   fw.className='firework';
   fw.style.left=e.clientX+'px';
   fw.style.top=e.clientY+'px';
-  const parts=8;
+  const parts=20;
   for(let i=0;i<parts;i++){
     const s=document.createElement('span');
     const angle=(i/parts)*Math.PI*2;
-    const dist=20;
+    const dist=200;
     s.style.setProperty('--x',Math.cos(angle)*dist+'px');
     s.style.setProperty('--y',Math.sin(angle)*dist+'px');
     s.style.background=`hsl(${Math.random()*360},100%,70%)`;
@@ -341,14 +342,14 @@ studentOverlay.addEventListener('click',e=>{
   }
 });
 
-studentClose.addEventListener('click',()=>studentOverlay.classList.add('hidden'));
+studentClose.addEventListener('click',()=>{studentOverlay.classList.add('hidden');modifier=null;});
 infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
 
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');infoBox.classList.add('hidden');}
+  if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');infoBox.classList.add('hidden');modifier=null;}
   if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||/^\d$/.test(e.key))) modifier=e.key;
-  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
+  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
   if(e.key==='q'){toggle(settingsBox);}
   else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
   else if(e.key===','){if(history.length){historyIndex=Math.max(0,historyIndex-1);result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');}}
@@ -366,7 +367,6 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-document.addEventListener('keyup',e=>{if(e.key==='f'||e.key==='m'||/^\d$/.test(e.key)) modifier=null;});
 
 pickBtn.addEventListener('click',e=>{
   if(e.shiftKey){
