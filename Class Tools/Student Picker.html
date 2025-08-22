@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Picker</title>
+<style>
+/* Basic layout and typography */
+body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}
+body.theme1{background:linear-gradient(-45deg,#1a2a6c,#b21f1f,#fdbb2d,#1a2a6c);background-size:400% 400%;animation:cosmic 20s ease infinite;}
+body.theme2{background:linear-gradient(60deg,#abecd6,#fbed96);background-size:400% 400%;animation:cosmic2 20s ease infinite;}
+body.theme3{background:linear-gradient(45deg,#ee7752,#e73c7e,#23a6d5,#23d5ab);background-size:400% 400%;animation:cosmic3 15s ease infinite;}
+body.theme4{background:radial-gradient(circle,#ff9a9e,#fad0c4);background-size:200% 200%;animation:cosmic4 15s ease infinite;}
+body.theme5{background:#222;}
+button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius:4px;transition:background 0.3s;}
+button:hover{background:#eee;}
+#pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
+#gameTitle{position:fixed;top:10px;left:50%;transform:translateX(-50%);margin:0;font-size:2rem;cursor:text;}
+#sessionInfo{position:fixed;top:50px;left:50%;transform:translateX(-50%);font-size:1.2rem;}
+#result{margin-top:20px;min-height:6rem;}
+#result .picked{font-size:6rem;animation:pop 0.6s ease forwards;opacity:0;}
+#countdown{margin-top:10px;font-size:1.2rem;}
+
+/* Top buttons */
+.top-btn{position:fixed;top:10px;background:transparent;border:none;font-size:1.5rem;}
+#dataToggle{left:10px;}
+#settingsToggle{right:10px;}
+
+/* Popups */
+.popup{position:fixed;background:#fff;border:1px solid #ccc;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.2);padding:0;}
+.popup.hidden{display:none;}
+.popup-header{background:#f0f0f0;padding:5px 10px;cursor:move;display:flex;justify-content:space-between;align-items:center;border-top-left-radius:6px;border-top-right-radius:6px;}
+.popup-header span{cursor:pointer;}
+.popup-content{padding:10px;}
+#dataArea{width:250px;height:120px;}
+.popup-actions{display:flex;gap:10px;margin-top:10px;}
+
+/* Overlays */
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;}
+.overlay.hidden{display:none;}
+.overlay .content{background:#fff;border-radius:8px;padding:20px;min-width:260px;max-height:90%;overflow:auto;position:relative;}
+.overlay .content .close{position:absolute;top:10px;right:10px;cursor:pointer;}
+
+/* Settings layout */
+#settingsBox label{display:block;margin:10px 0 5px;}
+
+/* Student list overlay */
+#studentOverlay .columns{display:flex;gap:20px;}
+#studentOverlay .column{min-width:150px;}
+#studentOverlay .column.male .name{font-size:4.8rem;background:rgba(30,144,255,0.2);position:relative;overflow:hidden;}
+#studentOverlay .column.female .name{font-size:4.8rem;background:rgba(255,0,255,0.2);position:relative;overflow:hidden;}
+#studentOverlay .column.unknown{font-size:0.9rem;text-align:center;}
+#studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
+#studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;transition:background 0.3s;}
+#studentOverlay .name:hover{background:#eee;}
+#studentOverlay .name.inactive{color:#bbb;}
+#studentOverlay .name .mult{font-size:0.5em;margin-left:8px;}
+#studentInput{width:80%;margin:10px auto 0;display:block;padding:8px;box-sizing:border-box;}
+
+/* Performance overlay */
+#performanceOverlay .perf-name{cursor:pointer;padding:5px 0;}
+#perfContent{max-height:60vh;max-width:80vw;overflow:auto;}
+#perfContent table{border-collapse:collapse;font-size:1.2rem;}
+#perfContent th,#perfContent td{border:1px solid #ccc;padding:4px 8px;}
+
+/* End overlay */
+#endOverlay .content{background:#fff;padding:40px;border-radius:8px;text-align:center;}
+
+/* Info overlay */
+#infoBox ul{list-style:none;padding-left:0;}
+#infoBox li{margin:5px 0;}
+
+/* Animations */
+@keyframes shine{from{left:-100%;}to{left:100%;}}
+@keyframes pop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
+@keyframes cosmic{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes cosmic2{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes cosmic3{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes cosmic4{0%{background-position:0% 0%;}50%{background-position:100% 100%;}100%{background-position:0% 0%;}}
+.firework{position:fixed;pointer-events:none;}
+.firework span{position:absolute;width:8px;height:8px;border-radius:50%;background:gold;animation:particle 600ms ease-out forwards;}
+@keyframes particle{from{transform:translate(0,0);opacity:1;}to{transform:translate(var(--x),var(--y));opacity:0;}}
+
+#studentOverlay .column.male .name::after,
+#studentOverlay .column.female .name::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,0.5),transparent);animation:shine 4s linear infinite;}
+#studentOverlay .name.used{color:#000;text-decoration:line-through;}
+#studentOverlay .name.used::after{display:none;}
+
+</style>
+</head>
+<body class="theme1">
+<button id="dataToggle" class="top-btn">☰</button>
+<button id="settingsToggle" class="top-btn">⚙️</button>
+<h1 id="gameTitle" contenteditable="true">Class</h1>
+<div id="sessionInfo"></div>
+<div id="result"></div>
+<button id="pickBtn">Pick Student</button>
+<div id="countdown"></div>
+<div id="stats" style="position:fixed;bottom:5px;left:5px;font-size:0.8rem;"></div>
+<button id="perfBtn" style="position:fixed;bottom:10px;right:90px;">Performance</button>
+<button id="perfExport" style="position:fixed;bottom:10px;right:10px;">Export</button>
+<audio id="bgm"></audio>
+
+<!-- Import/Export Popup -->
+<div id="dataBox" class="popup hidden" style="top:60px;left:20px;">
+  <div class="popup-header" id="dataHeader">Data <span id="dataClose">✖</span></div>
+  <div class="popup-content">
+    <textarea id="dataArea" placeholder="Paste data here"></textarea>
+    <div class="popup-actions">
+      <button id="importBtn">Import</button>
+      <button id="exportBtn">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Overlay -->
+<div id="settingsBox" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="settingsClose">✖</span>
+    <h2>Settings</h2>
+    <label>Gender</label>
+    <select id="genderSetting">
+      <option value="r">Random</option>
+      <option value="m">Male</option>
+      <option value="f">Female</option>
+    </select>
+    <label>Selection Mode</label>
+    <select id="modeSetting">
+      <option value="random">True Random</option>
+      <option value="noRecent">No last 3 picks</option>
+      <option value="noRepeat">No repeats</option>
+    </select>
+    <label>Count</label>
+    <select id="countSetting">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </div>
+</div>
+
+<!-- Student Overlay -->
+<div id="studentOverlay" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="studentClose">✖</span>
+    <div class="columns">
+      <div id="maleList" class="column male"></div>
+      <div id="unknownList" class="column unknown"></div>
+      <div id="femaleList" class="column female"></div>
+    </div>
+    <input id="studentInput" placeholder="Type name and press Enter"/>
+  </div>
+</div>
+
+<!-- End Overlay -->
+<div id="endOverlay" class="overlay hidden">
+  <div class="content">
+    <h2>All students have been picked!</h2>
+    <div class="popup-actions">
+      <button id="resetBtn">Reset</button>
+      <button id="retryBtn">Try Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Controls Overlay -->
+<div id="infoBox" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="infoClose">✖</span>
+    <h2>Controls</h2>
+    <ul>
+      <li>q: settings</li>
+      <li>space: student list</li>
+      <li>m/f/r: pick male/female/random</li>
+      <li>1/2/3: pick count</li>
+      <li>. and /: history</li>
+      <li>, and / in list: undo/redo</li>
+      <li>shift+click pick: repeat last</li>
+      <li>z/x/s (+Shift=-)+click result: tally</li>
+      <li>shift+click name: toggle absent</li>
+      <li>m/f/l/number+click name: gender, late, weight</li>
+      <li>Shift+Esc: reset counts</li>
+      <li>?: hard reset</li>
+      <li>i: controls</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Performance Overlay -->
+<div id="performanceOverlay" class="overlay hidden">
+  <div class="content">
+    <span class="close" id="perfClose">✖</span>
+    <div id="perfHeader" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <button id="perfBack" style="display:none;">Back</button>
+      <h2 id="perfTitle" style="margin:0;">Performance</h2>
+      <button id="perfClassBtn">Class</button>
+    </div>
+    <div id="perfContent"></div>
+  </div>
+</div>
+
+<script>
+// Data structures
+let students=[]; // {name, gender, weight, disabled}
+let settings={gender:'r', mode:'random', count:1};
+let history=[]; // array of arrays
+let historyIndex=-1;
+let recent=[]; // last picks for noRecent
+let remaining=[]; // for noRepeat mode
+let usedCounts={}; // times each student has been used
+let modifier=null; // for student overlay
+let forcedQueue=[]; // scheduled picks
+let sessionData=[{students:{},class:{correct:0,incorrect:0,skipped:0}}];
+let performance=sessionData[0].students;
+let studentHistory=[];
+let studentHistoryIndex=-1;
+let themeIndex=1;
+
+function currentSession(){return sessionData[sessionData.length-1];}
+
+function updateSessionDisplay(){
+  sessionInfo.textContent=`Session ${sessionData.length}`;
+}
+
+function saveStudentState(){
+  studentHistory=studentHistory.slice(0,studentHistoryIndex+1);
+  studentHistory.push(JSON.parse(JSON.stringify({students,sessionData,usedCounts})));
+  studentHistoryIndex++;
+}
+
+function loadStudentState(){
+  const state=studentHistory[studentHistoryIndex];
+  students=JSON.parse(JSON.stringify(state.students));
+  sessionData=JSON.parse(JSON.stringify(state.sessionData));
+  usedCounts=JSON.parse(JSON.stringify(state.usedCounts));
+  performance=currentSession().students;
+  renderStudents();
+}
+
+function undoStudent(){
+  if(studentHistoryIndex>0){studentHistoryIndex--;loadStudentState();}
+}
+
+function redoStudent(){
+  if(studentHistoryIndex<studentHistory.length-1){studentHistoryIndex++;loadStudentState();}
+}
+
+const result=document.getElementById('result');
+const pickBtn=document.getElementById('pickBtn');
+const genderSetting=document.getElementById('genderSetting');
+const modeSetting=document.getElementById('modeSetting');
+const countSetting=document.getElementById('countSetting');
+const countdown=document.getElementById('countdown');
+const gameTitle=document.getElementById('gameTitle');
+const sessionInfo=document.getElementById('sessionInfo');
+const stats=document.getElementById('stats');
+const perfBtn=document.getElementById('perfBtn');
+const perfExport=document.getElementById('perfExport');
+const perfOverlay=document.getElementById('performanceOverlay');
+const perfClose=document.getElementById('perfClose');
+const perfContent=document.getElementById('perfContent');
+const perfTitle=document.getElementById('perfTitle');
+const perfBack=document.getElementById('perfBack');
+const perfClassBtn=document.getElementById('perfClassBtn');
+const bgm=document.getElementById('bgm');
+let musicStarted=false;
+let musicTracks=[];
+let musicIndex=0;
+
+// Import/Export popup
+const dataBox=document.getElementById('dataBox');
+const dataToggle=document.getElementById('dataToggle');
+const dataClose=document.getElementById('dataClose');
+const importBtn=document.getElementById('importBtn');
+const exportBtn=document.getElementById('exportBtn');
+const dataArea=document.getElementById('dataArea');
+const dataHeader=document.getElementById('dataHeader');
+let dragOffset={x:0,y:0};
+let dragging=false;
+
+// Settings overlay
+const settingsBox=document.getElementById('settingsBox');
+const settingsToggle=document.getElementById('settingsToggle');
+const settingsClose=document.getElementById('settingsClose');
+
+// Student overlay
+const studentOverlay=document.getElementById('studentOverlay');
+const studentClose=document.getElementById('studentClose');
+const maleList=document.getElementById('maleList');
+const femaleList=document.getElementById('femaleList');
+const unknownList=document.getElementById('unknownList');
+const studentInput=document.getElementById('studentInput');
+
+// End overlay
+const endOverlay=document.getElementById('endOverlay');
+const resetBtn=document.getElementById('resetBtn');
+const retryBtn=document.getElementById('retryBtn');
+
+// Info overlay
+const infoBox=document.getElementById('infoBox');
+const infoClose=document.getElementById('infoClose');
+
+const keyFlags={z:false,x:false,s:false};
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(keyFlags.hasOwnProperty(k)) keyFlags[k]=true;});
+document.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(keyFlags.hasOwnProperty(k)) keyFlags[k]=false;});
+
+result.addEventListener('click',e=>{
+  if(!e.target.classList.contains('picked')) return;
+  const name=e.target.textContent;
+  const sess=currentSession();
+  const p=sess.students[name]||(sess.students[name]={correct:0,incorrect:0,skipped:0});
+  if(keyFlags.z){
+    if(e.shiftKey){ if(p.correct>0){p.correct--; if(sess.class.correct>0) sess.class.correct--;}} else {p.correct++; sess.class.correct++;}
+    spawnFirework(e);
+  }else if(keyFlags.x){
+    if(e.shiftKey){ if(p.incorrect>0){p.incorrect--; if(sess.class.incorrect>0) sess.class.incorrect--;}} else {p.incorrect++; sess.class.incorrect++;}
+    spawnFirework(e);
+  }else if(keyFlags.s){
+    if(e.shiftKey){ if(p.skipped>0){p.skipped--; if(sess.class.skipped>0) sess.class.skipped--;}} else {p.skipped++; sess.class.skipped++;}
+    spawnFirework(e);
+  }
+});
+
+updateCounts();
+
+function toggle(el){el.classList.toggle('hidden');}
+
+function buildRemaining(){
+  remaining=[];
+  students.forEach(s=>{
+    if(s.disabled) return;
+    const w=s.weight||1;
+    const u=usedCounts[s.name]||0;
+    for(let i=u;i<w;i++) remaining.push(s);
+  });
+}
+
+function softReset(){
+  history=[];
+  historyIndex=-1;
+  recent=[];
+  usedCounts={};
+  buildRemaining();
+  result.innerHTML='';
+  endOverlay.classList.add('hidden');
+  countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';
+  forcedQueue=[];
+  markUsed();
+  updateCounts();
+}
+
+function hardReset(){
+  students=[];
+  sessionData=[{students:{},class:{correct:0,incorrect:0,skipped:0}}];
+  performance=sessionData[0].students;
+  renderStudents();
+  softReset();
+  studentHistory=[];
+  studentHistoryIndex=-1;
+  saveStudentState();
+  updateSessionDisplay();
+}
+
+function resetPerformance(){
+  const sess=currentSession();
+  sess.class={correct:0,incorrect:0,skipped:0};
+  students.forEach(s=>{sess.students[s.name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};});
+  performance=sess.students;
+}
+
+// Dragging for data box
+dataHeader.addEventListener('mousedown',e=>{dragging=true;dragOffset.x=e.offsetX;dragOffset.y=e.offsetY;});
+document.addEventListener('mousemove',e=>{if(dragging){dataBox.style.left=(e.pageX-dragOffset.x)+'px';dataBox.style.top=(e.pageY-dragOffset.y)+'px';}});
+document.addEventListener('mouseup',()=>dragging=false);
+
+// Import / Export
+dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
+dataClose.addEventListener('mousedown',e=>{e.stopPropagation();dragging=false;});
+dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
+importBtn.addEventListener('click',()=>{
+  try{
+    const text=dataArea.value.trim();
+    const [title,encoded]=text.split('|');
+    gameTitle.textContent=title||'Class';
+    const obj=encoded?JSON.parse(atob(encoded)):{s:[],d:[]};
+    students=obj.s.map(o=>({name:o.n,gender:o.g,weight:1,disabled:false}));
+    sessionData=obj.d&&obj.d.length?obj.d:[{students:{},class:{correct:0,incorrect:0,skipped:0}}];
+    sessionData.forEach(sess=>{
+      Object.keys(sess.students).forEach(n=>{
+        const p=sess.students[n];
+        if(p.late===undefined) p.late=0;
+        if(p.absent===undefined) p.absent=false;
+      });
+    });
+    sessionData.push({students:{},class:{correct:0,incorrect:0,skipped:0}});
+    performance=currentSession().students;
+    renderStudents();
+    softReset();
+    studentHistory=[];
+    studentHistoryIndex=-1;
+    saveStudentState();
+    updateSessionDisplay();
+    dataBox.classList.add('hidden');
+  }catch(e){alert('Invalid data');}
+});
+exportBtn.addEventListener('click',()=>{
+  const title=gameTitle.textContent.trim()||'Class';
+  const obj={s:students.map(s=>({n:s.name,g:s.gender})),d:sessionData};
+  const encoded=btoa(JSON.stringify(obj));
+  dataArea.value=`${title}|${encoded}`;
+  dataArea.select();
+  document.execCommand('copy');
+});
+
+// Settings controls
+settingsToggle.addEventListener('click',()=>toggle(settingsBox));
+settingsClose.addEventListener('click',()=>settingsBox.classList.add('hidden'));
+
+genderSetting.addEventListener('change',()=>settings.gender=genderSetting.value);
+modeSetting.addEventListener('change',()=>{
+  settings.mode=modeSetting.value;
+  if(settings.mode==='noRepeat'){
+    buildRemaining();
+    countdown.textContent=`Remaining: ${remaining.length}`;
+  }else{
+    countdown.textContent='';
+  }
+  markUsed();
+});
+countSetting.addEventListener('change',()=>settings.count=parseInt(countSetting.value));
+
+// Student overlay functions
+function markUsed(){
+  document.querySelectorAll('#studentOverlay .name').forEach(el=>{
+    const stu=students.find(s=>s.name===el.dataset.name);
+    if(stu && stu.disabled){
+      el.classList.remove('used');
+    }else{
+      const used=usedCounts[stu.name]||0;
+      if(settings.mode==='noRepeat' && used>=(stu.weight||1)){
+        el.classList.add('used');
+      }else{
+        el.classList.remove('used');
+      }
+    }
+  });
+}
+
+function updateCounts(){
+  const total=students.length;
+  const absent=students.filter(s=>s.disabled).length;
+  const present=students.filter(s=>!s.disabled).length;
+  stats.textContent=`Total: ${total} | Absent: ${absent} | Present: ${present}`;
+  stats.style.color=(total===absent+present)?'#000':'red';
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+async function loadMusic(){
+  // attempt to read an optional playlist file for full track list
+  try{
+    const res=await fetch('music/playlist.json');
+    if(res.ok){
+      const list=await res.json();
+      if(Array.isArray(list) && list.length){
+        return list.map(f=>`music/${f}`);
+      }
+    }
+  }catch(e){}
+  // fallback to a single default track named music.mp3
+  const single='music/music.mp3';
+  try{
+    await fetch(single);
+    return [single];
+  }catch(e){}
+  return [];
+}
+
+function playTrack(){
+  if(!musicTracks.length) return;
+  bgm.src=musicTracks[musicIndex];
+  bgm.play().catch(()=>{});
+}
+
+async function startMusic(){
+  if(musicStarted) return;
+  musicStarted=true;
+  musicTracks=await loadMusic();
+  if(!musicTracks.length) return;
+  shuffle(musicTracks);
+  musicIndex=0;
+  playTrack();
+  bgm.addEventListener('ended',()=>{
+    musicIndex++;
+    if(musicIndex>=musicTracks.length){
+      shuffle(musicTracks);
+      musicIndex=0;
+    }
+    playTrack();
+  });
+}
+
+function playBeep(){
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.type='sine';
+  osc.frequency.value=600;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  gain.gain.setValueAtTime(0.2,ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+  osc.stop(ctx.currentTime+0.5);
+}
+
+function spawnFirework(e){
+  const fw=document.createElement('div');
+  fw.className='firework';
+  fw.style.left=e.clientX+'px';
+  fw.style.top=e.clientY+'px';
+  const parts=20;
+  for(let i=0;i<parts;i++){
+    const s=document.createElement('span');
+    const angle=(i/parts)*Math.PI*2;
+    const dist=200;
+    s.style.setProperty('--x',Math.cos(angle)*dist+'px');
+    s.style.setProperty('--y',Math.sin(angle)*dist+'px');
+    s.style.background=`hsl(${Math.random()*360},100%,70%)`;
+    fw.appendChild(s);
+  }
+  document.body.appendChild(fw);
+  setTimeout(()=>fw.remove(),600);
+}
+
+function renderStudents(){
+  const sess=currentSession();
+  students.forEach(s=>{if(!sess.students[s.name]) sess.students[s.name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};});
+  performance=sess.students;
+  const males=students.filter(s=>s.gender==='m').sort((a,b)=>a.name.localeCompare(b.name));
+  const females=students.filter(s=>s.gender==='f').sort((a,b)=>a.name.localeCompare(b.name));
+  const unknowns=students.filter(s=>s.gender==='u').sort((a,b)=>a.name.localeCompare(b.name));
+  const tmpl=s=>`<div class="name${s.disabled?' inactive':''}" data-name="${s.name}">${s.name}${s.weight!==1?`<span class="mult">x${s.weight}</span>`:''}</div>`;
+  maleList.innerHTML=males.map(tmpl).join('');
+  femaleList.innerHTML=females.map(tmpl).join('');
+  unknownList.innerHTML=unknowns.map(tmpl).join('');
+  if(settings.mode==='noRepeat') buildRemaining();
+  markUsed();
+  if(settings.mode==='noRepeat') countdown.textContent=`Remaining: ${remaining.length}`;
+  updateCounts();
+}
+
+studentInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && studentInput.value.trim()){
+    const n=studentInput.value.trim();
+    students.push({name:n,gender:'u',weight:1,disabled:false});
+    performance[n]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
+    studentInput.value='';
+    renderStudents();
+    saveStudentState();
+  }
+});
+
+studentOverlay.addEventListener('click',e=>{
+  const target=e.target;
+  if(target.classList.contains('name')){
+    const name=target.dataset.name;
+    const idx=students.findIndex(s=>s.name===name);
+    if(keyFlags.z || keyFlags.x || keyFlags.s){
+      const sess=currentSession();
+      const p=sess.students[name]||(sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false});
+      if(keyFlags.z){
+        if(e.shiftKey){ if(p.correct>0){p.correct--; if(sess.class.correct>0) sess.class.correct--;}} else {p.correct++; sess.class.correct++;}
+      }else if(keyFlags.x){
+        if(e.shiftKey){ if(p.incorrect>0){p.incorrect--; if(sess.class.incorrect>0) sess.class.incorrect--;}} else {p.incorrect++; sess.class.incorrect++;}
+      }else if(keyFlags.s){
+        if(e.shiftKey){ if(p.skipped>0){p.skipped--; if(sess.class.skipped>0) sess.class.skipped--;}} else {p.skipped++; sess.class.skipped++;}
+      }
+      spawnFirework(e);
+      return;
+    }else if(e.shiftKey){
+      students[idx].disabled=!students[idx].disabled;
+      const sess=currentSession();
+      if(!sess.students[name]) sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
+      sess.students[name].absent=students[idx].disabled;
+      if(students[idx].disabled) sess.students[name].late=0;
+    }else if(modifier==='f') students[idx].gender='f';
+    else if(modifier==='m') students[idx].gender='m';
+    else if(modifier==='l'){
+      const mins=parseInt(prompt('Minutes late?')||'0',10);
+      const sess=currentSession();
+      if(!sess.students[name]) sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
+      sess.students[name].late=isNaN(mins)?0:mins;
+      sess.students[name].absent=false;
+      students[idx].disabled=false;
+    }
+    else if(modifier && /^\d$/.test(modifier)) students[idx].weight=parseInt(modifier);
+    else {
+      const hasData=sessionData.some(sess=>{
+        const p=sess.students[name];
+        return p && (p.correct||p.incorrect||p.skipped);
+      });
+      if(hasData){
+        if(!confirm(`Delete ${name} and all past data?`)) return;
+        sessionData.forEach(sess=>{
+          const p=sess.students[name];
+          if(p){
+            sess.class.correct-=p.correct;
+            sess.class.incorrect-=p.incorrect;
+            sess.class.skipped-=p.skipped;
+            delete sess.students[name];
+          }
+        });
+      }else{
+        sessionData.forEach(sess=>{delete sess.students[name];});
+      }
+      students.splice(idx,1);
+      delete performance[name];
+      delete usedCounts[name];
+      forcedQueue=forcedQueue.filter(n=>n!==name);
+    }
+    renderStudents();
+    saveStudentState();
+  }
+});
+
+studentClose.addEventListener('click',()=>{studentOverlay.classList.add('hidden');modifier=null;});
+infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
+
+perfBtn.addEventListener('click',()=>{showPerfList();perfOverlay.classList.remove('hidden');});
+perfClose.addEventListener('click',()=>perfOverlay.classList.add('hidden'));
+perfBack.addEventListener('click',showPerfList);
+perfClassBtn.addEventListener('click',showClassPerf);
+perfContent.addEventListener('click',e=>{if(e.target.classList.contains('perf-name')) showStudentPerf(e.target.dataset.name);});
+perfExport.addEventListener('click',exportPerformance);
+
+saveStudentState();
+updateSessionDisplay();
+
+document.body.addEventListener('click',e=>{
+  if(e.shiftKey && e.target===document.body){
+    themeIndex=themeIndex%5+1;
+    document.body.className='theme'+themeIndex;
+  }
+});
+
+// Show overlays and handle keys
+document.addEventListener('keydown',e=>{
+  if(!studentOverlay.classList.contains('hidden') && e.target!==studentInput){
+    if(e.key===','){e.preventDefault();undoStudent();return;}
+    if(e.key==='/'){e.preventDefault();redoStudent();return;}
+  }
+  if(e.key==='Escape'){
+    if(!studentOverlay.classList.contains('hidden')){
+      if(e.shiftKey){
+        students.forEach(s=>s.weight=1);
+        renderStudents();
+        saveStudentState();
+        modifier=null;
+      }else if(document.activeElement===studentInput){
+        studentInput.blur();
+      }else{
+        studentOverlay.classList.add('hidden');
+        modifier=null;
+      }
+    }else{
+      settingsBox.classList.add('hidden');
+      dataBox.classList.add('hidden');
+      infoBox.classList.add('hidden');
+      perfOverlay.classList.add('hidden');
+      if(e.shiftKey){resetPerformance();softReset();}
+    }
+    return;
+  }
+  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||e.key==='l'||/^\d$/.test(e.key))) modifier=e.key;
+  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
+  if(e.key==='q'){toggle(settingsBox);}
+  else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
+  else if(e.key==='.'){
+    if(history.length){
+      historyIndex=Math.max(0,historyIndex-1);
+      result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');
+    }
+  }
+  else if(e.key==='/'){
+    if(history.length){
+      historyIndex=Math.min(history.length-1,historyIndex+1);
+      result.innerHTML=history[historyIndex].map(n=>`<div class="picked">${n}</div>`).join('');
+    }
+  }
+  else if(e.key==='?'){hardReset();}
+  else if(e.key==='i'){toggle(infoBox);}
+  else if(['m','f','r','1','2','3'].includes(e.key) && settingsBox.classList.contains('hidden') && studentOverlay.classList.contains('hidden')){
+    if(e.key==='m') performPick('m',null);
+    if(e.key==='f') performPick('f',null);
+    if(e.key==='r') performPick('r',null);
+    if(e.key==='1') performPick(null,1);
+    if(e.key==='2') performPick(null,2);
+    if(e.key==='3') performPick(null,3);
+  }
+});
+
+document.addEventListener('keyup',e=>{
+  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||e.key==='l'||/^\d$/.test(e.key))) modifier=null;
+});
+
+
+pickBtn.addEventListener('click',e=>{
+  startMusic();
+  if(e.shiftKey){
+    const last=result.querySelector('.picked');
+    if(last){
+      const name=last.textContent;
+      let rounds=3;
+      if(settings.mode==='noRepeat'){
+        const roundsAvail=Math.ceil(Math.max(1,remaining.length)/settings.count);
+        rounds=Math.min(3,Math.max(1,roundsAvail-1));
+      }
+      forcedQueue.push({name,rounds});
+    }
+    spawnFirework(e);
+    playBeep();
+  }
+  performPick();
+});
+
+function performPick(tempGender=null,tempCount=null){
+  if(!students.length){result.textContent='No students';return;}
+  forcedQueue.forEach(f=>f.rounds--);
+  const due=forcedQueue.filter(f=>f.rounds<=0).map(f=>f.name);
+  forcedQueue=forcedQueue.filter(f=>f.rounds>0);
+  let gender=tempGender||settings.gender;
+  let count=tempCount||settings.count;
+  let pick=[];
+  const zeros=students.filter(s=>s.weight===0 && !s.disabled);
+  let pool=students.filter(s=>{
+    if(s.disabled) return false;
+    if(gender==='m' && s.gender!=='m') return false;
+    if(gender==='f' && s.gender!=='f') return false;
+    return true;
+  });
+  if(settings.mode==='noRecent'){
+    pool=pool.filter(s=>!recent.includes(s.name));
+    if(!pool.length) pool=students.filter(s=>{
+      if(s.disabled) return false;
+      if(gender==='m' && s.gender!=='m') return false;
+      if(gender==='f' && s.gender!=='f') return false;
+      return true;
+    });
+  }
+  if(settings.mode==='noRepeat'){
+    if(!remaining.length) {endOverlay.classList.remove('hidden');return;}
+    pool=remaining.filter(s=>{
+      if(gender==='m') return s.gender==='m';
+      if(gender==='f') return s.gender==='f';
+      return true;
+    });
+    if(!pool.length){result.textContent='No matching students';return;}
+  }
+  pool=pool.filter(s=>!due.includes(s.name) && s.weight!==0);
+  let weighted=[];
+  if(settings.mode==='noRepeat'){
+    weighted=pool.slice();
+  }else{
+    pool.forEach(s=>{const w=s.weight||1;for(let i=0;i<w;i++) weighted.push(s);});
+  }
+  due.forEach(name=>{const s=students.find(st=>st.name===name);if(s) pick.push(s);});
+  let zeroPool=zeros.filter(z=>!due.includes(z.name));
+  while(pick.length<count && zeroPool.length){
+    const zi=Math.floor(Math.random()*zeroPool.length);
+    pick.push(zeroPool[zi]);
+    zeroPool.splice(zi,1);
+  }
+  if(!weighted.length && pick.length<count){result.textContent='No matching students';return;}
+  for(let i=pick.length;i<count && weighted.length;i++){
+    const idx=Math.floor(Math.random()*weighted.length);
+    const chosen=weighted[idx];
+    pick.push(chosen);
+    weighted=weighted.filter(s=>s!==chosen);
+  }
+  result.innerHTML=pick.map(s=>`<div class="picked">${s.name}</div>`).join('');
+  history.push(pick.map(s=>s.name));
+  historyIndex=history.length-1;
+  recent=recent.concat(pick.map(s=>s.name)).slice(-3);
+  if(settings.mode==='noRepeat'){
+    pick.forEach(s=>{if(s.weight!==0){usedCounts[s.name]=(usedCounts[s.name]||0)+1;}});
+    buildRemaining();
+    countdown.textContent=`Remaining: ${remaining.length}`;
+    markUsed();
+    if(!remaining.length) endOverlay.classList.remove('hidden');
+  }
+}
+
+function showPerfList(){
+  perfTitle.textContent='Performance';
+  perfBack.style.display='none';
+  perfClassBtn.style.display='block';
+  const list=students.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<div class="perf-name" data-name="${s.name}">${s.name}</div>`).join('');
+  perfContent.innerHTML=`<input id="perfSearch" placeholder="Search" style="width:100%;margin-bottom:10px;"/><div id="perfList">${list}</div>`;
+  const perfSearch=document.getElementById('perfSearch');
+  perfSearch.addEventListener('input',()=>{
+    const q=perfSearch.value.toLowerCase();
+    document.querySelectorAll('#perfList .perf-name').forEach(el=>{
+      el.style.display=el.textContent.toLowerCase().includes(q)?'block':'none';
+    });
+  });
+}
+
+function showStudentPerf(name){
+  perfTitle.textContent=name;
+  const totals={correct:0,incorrect:0,skipped:0,late:0,absences:0,present:0};
+  sessionData.forEach(sess=>{const p=sess.students[name];if(p){if(p.absent){totals.absences++;}else{totals.late+=p.late||0;totals.present++;}totals.correct+=p.correct;totals.incorrect+=p.incorrect;totals.skipped+=p.skipped;}});
+  const all=totals.correct+totals.incorrect+totals.skipped;
+  const pctAll=all? (totals.correct/all*100).toFixed(1):'0.0';
+  const avgLate=totals.present? (totals.late/totals.present).toFixed(1):'0.0';
+  let html='<table><tr><th>Session</th><th>Correct</th><th>Incorrect</th><th>Unanswered</th><th>Total</th><th>% Correct</th><th>Absent</th><th>Late</th></tr>';
+  html+=`<tr><td>All</td><td>${totals.correct}</td><td>${totals.incorrect}</td><td>${totals.skipped}</td><td>${all}</td><td>${pctAll}</td><td>${totals.absences}</td><td>${totals.late} (${avgLate})</td></tr>`;
+  sessionData.forEach((sess,i)=>{
+    const p=sess.students[name];
+    if(p){
+      if(p.absent){
+        html+=`<tr><td>${i+1}</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td><td>Y</td><td>0</td></tr>`;
+      }else{
+        const total=p.correct+p.incorrect+p.skipped;
+        const percent=total? (p.correct/total*100).toFixed(1):'0.0';
+        html+=`<tr><td>${i+1}</td><td>${p.correct}</td><td>${p.incorrect}</td><td>${p.skipped}</td><td>${total}</td><td>${percent}</td><td>N</td><td>${p.late||0}</td></tr>`;
+      }
+    }else{
+      html+=`<tr><td>${i+1}</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>`;
+    }
+  });
+  html+='</table>';
+  perfContent.innerHTML=html;
+  perfBack.style.display='block';
+  perfClassBtn.style.display='block';
+}
+
+
+function showClassPerf(){
+  perfTitle.textContent='Class Summary';
+  const all={correct:0,incorrect:0,skipped:0,late:0,absent:0,present:0};
+  sessionData.forEach(sess=>{
+    all.correct+=sess.class.correct;all.incorrect+=sess.class.incorrect;all.skipped+=sess.class.skipped;
+    students.forEach(s=>{
+      const p=sess.students[s.name];
+      if(p){
+        if(p.absent){all.absent++;}else{all.late+=p.late||0;all.present++;}
+      }
+    });
+  });
+  let activeAll=0;
+  students.forEach(s=>{let sum=0;sessionData.forEach(sess=>{const p=sess.students[s.name];if(p) sum+=p.correct+p.incorrect+p.skipped;});if(sum>0) activeAll++;});
+  const totalAll=all.correct+all.incorrect+all.skipped;
+  const avgAllC=activeAll? (all.correct/activeAll).toFixed(1):'0.0';
+  const avgAllI=activeAll? (all.incorrect/activeAll).toFixed(1):'0.0';
+  const avgAllS=activeAll? (all.skipped/activeAll).toFixed(1):'0.0';
+  const pctAll=totalAll? (all.correct/totalAll*100).toFixed(1):'0.0';
+  const avgLateAll=all.present? (all.late/all.present).toFixed(1):'0.0';
+  const avgAbsAll=sessionData.length? (all.absent/sessionData.length).toFixed(1):'0.0';
+  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th><th>Absences</th><th>Avg Late</th></tr>';
+  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td><td>${avgAbsAll}</td><td>${avgLateAll}</td></tr>`;
+  sessionData.forEach((sess,i)=>{
+    const totals=sess.class;
+    const total=totals.correct+totals.incorrect+totals.skipped;
+    let active=0,present=0,lateTot=0,abs=0;
+    students.forEach(s=>{const p=sess.students[s.name]; if(p){if(p.absent){abs++;}else{lateTot+=p.late||0;present++;} if((p.correct+p.incorrect+p.skipped)>0) active++;}});
+    const avgC=active? (totals.correct/active).toFixed(1):'0.0';
+    const avgI=active? (totals.incorrect/active).toFixed(1):'0.0';
+    const avgS=active? (totals.skipped/active).toFixed(1):'0.0';
+    const percent=total? (totals.correct/total*100).toFixed(1):'0.0';
+    const avgLate=present? (lateTot/present).toFixed(1):'0.0';
+    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td><td>${abs}</td><td>${avgLate}</td></tr>`;
+  });
+  html+='</table>';
+  perfContent.innerHTML=html;
+  perfBack.style.display='block';
+  perfClassBtn.style.display='none';
+}
+
+function exportPerformance(){
+  const names=students.map(s=>s.name).sort((a,b)=>a.localeCompare(b));
+  const overall={correct:0,incorrect:0,skipped:0,late:0,absent:0,present:0};
+  const perStudent={};
+  names.forEach(n=>perStudent[n]={correct:0,incorrect:0,skipped:0,late:0,absent:0,present:0});
+  sessionData.forEach(sess=>{
+    overall.correct+=sess.class.correct;
+    overall.incorrect+=sess.class.incorrect;
+    overall.skipped+=sess.class.skipped;
+    names.forEach(n=>{
+      const p=sess.students[n];
+      if(p){
+        perStudent[n].correct+=p.correct;
+        perStudent[n].incorrect+=p.incorrect;
+        perStudent[n].skipped+=p.skipped;
+        if(p.absent){perStudent[n].absent++; overall.absent++;}
+        else {perStudent[n].late+=p.late||0; perStudent[n].present++; overall.late+=p.late||0; overall.present++;}
+      }
+    });
+  });
+  let activeOverall=0;
+  names.forEach(n=>{const t=perStudent[n];if(t.correct+t.incorrect+t.skipped>0) activeOverall++;});
+  const totalOverall=overall.correct+overall.incorrect+overall.skipped;
+  const avgOC=activeOverall? (overall.correct/activeOverall).toFixed(1):'0.0';
+  const avgOI=activeOverall? (overall.incorrect/activeOverall).toFixed(1):'0.0';
+  const avgOS=activeOverall? (overall.skipped/activeOverall).toFixed(1):'0.0';
+  const pctOverall=totalOverall? (overall.correct/totalOverall*100).toFixed(1):'0.0';
+  const avgLateO=overall.present? (overall.late/overall.present).toFixed(1):'0.0';
+  const avgAbs=sessionData.length? (overall.absent/sessionData.length).toFixed(1):'0.0';
+  let lines=[
+    'Overall Summary',
+    'Class Summary',
+    `Total Qs:\t${totalOverall}`,
+    `Total Correct:\t${overall.correct}`,
+    `Avg Correct:\t${avgOC}`,
+    `Total Incorrect:\t${overall.incorrect}`,
+    `Avg Incorrect:\t${avgOI}`,
+    `Total Unanswered:\t${overall.skipped}`,
+    `Avg Unanswered:\t${avgOS}`,
+    `% Correct:\t${pctOverall}`,
+    `Avg Absences per Session:\t${avgAbs}`,
+    `Avg Late:\t${avgLateO}`,
+    '',
+    'Student Summaries',
+    'Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsences\tLate Total\tLate Avg'
+  ];
+  names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';const avgLate=t.present? (t.late/t.present).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}\t${t.absent}\t${t.late}\t${avgLate}`);});
+  sessionData.forEach((sess,i)=>{
+    const total=sess.class.correct+sess.class.incorrect+sess.class.skipped;
+    let active=0,lateTot=0,abs=0,present=0;
+    names.forEach(n=>{const p=sess.students[n];if(p){if(p.absent){abs++;}else{lateTot+=p.late||0;present++;} if(p.correct+p.incorrect+p.skipped>0) active++;}});
+    const avgC=active? (sess.class.correct/active).toFixed(1):'0.0';
+    const avgI=active? (sess.class.incorrect/active).toFixed(1):'0.0';
+    const avgS=active? (sess.class.skipped/active).toFixed(1):'0.0';
+    const pct=total? (sess.class.correct/total*100).toFixed(1):'0.0';
+    const avgLate=present? (lateTot/present).toFixed(1):'0.0';
+    lines.push(
+      '',
+      `Session ${i+1}`,
+      'Class Summary',
+      `Total Qs:\t${total}`,
+      `Total Correct:\t${sess.class.correct}`,
+      `Avg Correct:\t${avgC}`,
+      `Total Incorrect:\t${sess.class.incorrect}`,
+      `Avg Incorrect:\t${avgI}`,
+      `Total Unanswered:\t${sess.class.skipped}`,
+      `Avg Unanswered:\t${avgS}`,
+      `% Correct:\t${pct}`,
+      `Absences:\t${abs}`,
+      `Avg Late:\t${avgLate}`,
+      '',
+      'Student Summaries',
+      'Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsent\tLate'
+    );
+    names.forEach(n=>{
+      const p=sess.students[n];
+      if(p){
+        if(p.absent){lines.push(`${n}\t0\t0\t0\t0\t0.0\tYes\t0`);}else{const tot=p.correct+p.incorrect+p.skipped;const percent=tot? (p.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${tot}\t${percent}\tNo\t${p.late||0}`);}
+      }else{
+        lines.push(`${n}\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A`);
+      }
+    });
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='performance.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+resetBtn.addEventListener('click',()=>{softReset();});
+retryBtn.addEventListener('click',()=>{buildRemaining();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';markUsed();});
+</script>
+</body>
+</html>
