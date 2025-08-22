@@ -257,29 +257,33 @@ function moveBall(x, y){
   ball.style.top = y + 'px';
 }
 
-function maybeMutateBall(){
-  const r = Math.random();
+function applyMutation(type){
   ball.classList.remove('black','meteor','blackhole');
   stopCursorTrail();
-  if(r < 0.0025){
+  if(type === 'blackhole'){
     flashScreen('purple');
-    setTimeout(() => {
-      ball.classList.add('blackhole');
-    },1000);
-  } else if(r < 0.0275){
+    setTimeout(() => { ball.classList.add('blackhole'); }, 1000);
+  } else if(type === 'meteor'){
     flashScreen('burgundy');
     showMultiplier('x3');
-    setTimeout(() => {
-      ball.classList.add('meteor');
-      startCursorTrail('meteor');
-    },1000);
-  } else if(r < 0.1075){
+    setTimeout(() => { ball.classList.add('meteor'); startCursorTrail('meteor'); }, 1000);
+  } else if(type === 'black'){
     flashScreen('charcoal');
     showMultiplier('x2');
-    setTimeout(() => {
-      ball.classList.add('black');
-      startCursorTrail('black');
-    },1000);
+    setTimeout(() => { ball.classList.add('black'); startCursorTrail('black'); }, 1000);
+  }
+}
+
+function maybeMutateBall(){
+  const r = Math.random();
+  if(r < 0.0025){
+    applyMutation('blackhole');
+  } else if(r < 0.0275){
+    applyMutation('meteor');
+  } else if(r < 0.1075){
+    applyMutation('black');
+  } else {
+    applyMutation('');
   }
 }
 
@@ -418,6 +422,11 @@ document.addEventListener('keydown', (e) => {
   }
   if(isTyping()) return;
   const key = e.key.toLowerCase();
+  if(e.shiftKey && awaitingTeamSelection && timeDisplay.textContent === '\u221E'){
+    if(e.code === 'Digit1'){ applyMutation('black'); return; }
+    if(e.code === 'Digit2'){ applyMutation('meteor'); return; }
+    if(e.code === 'Digit3'){ applyMutation('blackhole'); return; }
+  }
   if(key === 'z'){
     resetHud();
   } else if(key === ','){
