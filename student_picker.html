@@ -289,8 +289,8 @@ const infoBox=document.getElementById('infoBox');
 const infoClose=document.getElementById('infoClose');
 
 const keyFlags={z:false,x:false,s:false};
-document.addEventListener('keydown',e=>{if(keyFlags.hasOwnProperty(e.key)) keyFlags[e.key]=true;});
-document.addEventListener('keyup',e=>{if(keyFlags.hasOwnProperty(e.key)) keyFlags[e.key]=false;});
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(keyFlags.hasOwnProperty(k)) keyFlags[k]=true;});
+document.addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(keyFlags.hasOwnProperty(k)) keyFlags[k]=false;});
 
 result.addEventListener('click',e=>{
   if(!e.target.classList.contains('picked')) return;
@@ -299,10 +299,13 @@ result.addEventListener('click',e=>{
   const p=sess.students[name]||(sess.students[name]={correct:0,incorrect:0,skipped:0});
   if(keyFlags.z){
     if(e.shiftKey){ if(p.correct>0){p.correct--; if(sess.class.correct>0) sess.class.correct--;}} else {p.correct++; sess.class.correct++;}
+    spawnFirework(e);
   }else if(keyFlags.x){
     if(e.shiftKey){ if(p.incorrect>0){p.incorrect--; if(sess.class.incorrect>0) sess.class.incorrect--;}} else {p.incorrect++; sess.class.incorrect++;}
+    spawnFirework(e);
   }else if(keyFlags.s){
     if(e.shiftKey){ if(p.skipped>0){p.skipped--; if(sess.class.skipped>0) sess.class.skipped--;}} else {p.skipped++; sess.class.skipped++;}
+    spawnFirework(e);
   }
 });
 
@@ -505,7 +508,19 @@ studentOverlay.addEventListener('click',e=>{
   if(target.classList.contains('name')){
     const name=target.dataset.name;
     const idx=students.findIndex(s=>s.name===name);
-    if(e.shiftKey){
+    if(keyFlags.z || keyFlags.x || keyFlags.s){
+      const sess=currentSession();
+      const p=sess.students[name]||(sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false});
+      if(keyFlags.z){
+        if(e.shiftKey){ if(p.correct>0){p.correct--; if(sess.class.correct>0) sess.class.correct--;}} else {p.correct++; sess.class.correct++;}
+      }else if(keyFlags.x){
+        if(e.shiftKey){ if(p.incorrect>0){p.incorrect--; if(sess.class.incorrect>0) sess.class.incorrect--;}} else {p.incorrect++; sess.class.incorrect++;}
+      }else if(keyFlags.s){
+        if(e.shiftKey){ if(p.skipped>0){p.skipped--; if(sess.class.skipped>0) sess.class.skipped--;}} else {p.skipped++; sess.class.skipped++;}
+      }
+      spawnFirework(e);
+      return;
+    }else if(e.shiftKey){
       students[idx].disabled=!students[idx].disabled;
       const sess=currentSession();
       if(!sess.students[name]) sess.students[name]={correct:0,incorrect:0,skipped:0,late:0,absent:false};
@@ -782,8 +797,9 @@ function showClassPerf(){
   const avgAllS=activeAll? (all.skipped/activeAll).toFixed(1):'0.0';
   const pctAll=totalAll? (all.correct/totalAll*100).toFixed(1):'0.0';
   const avgLateAll=all.present? (all.late/all.present).toFixed(1):'0.0';
-  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th><th>Total Late</th><th>Avg Late</th><th>Absences</th></tr>';
-  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td><td>${all.late}</td><td>${avgLateAll}</td><td>${all.absent}</td></tr>`;
+  const avgAbsAll=sessionData.length? (all.absent/sessionData.length).toFixed(1):'0.0';
+  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th><th>Avg Late</th><th>Absences</th></tr>';
+  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td><td>${avgLateAll}</td><td>${avgAbsAll}</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const totals=sess.class;
     const total=totals.correct+totals.incorrect+totals.skipped;
@@ -794,7 +810,7 @@ function showClassPerf(){
     const avgS=active? (totals.skipped/active).toFixed(1):'0.0';
     const percent=total? (totals.correct/total*100).toFixed(1):'0.0';
     const avgLate=present? (lateTot/present).toFixed(1):'0.0';
-    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td><td>${lateTot}</td><td>${avgLate}</td><td>${abs}</td></tr>`;
+    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td><td>${avgLate}</td><td>${abs}</td></tr>`;
   });
   html+='</table>';
   perfContent.innerHTML=html;
@@ -830,7 +846,8 @@ function exportPerformance(){
   const avgOS=activeOverall? (overall.skipped/activeOverall).toFixed(1):'0.0';
   const pctOverall=totalOverall? (overall.correct/totalOverall*100).toFixed(1):'0.0';
   const avgLateO=overall.present? (overall.late/overall.present).toFixed(1):'0.0';
-  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,`Total Late:\t${overall.late}`,`Avg Late:\t${avgLateO}`,`Total Absences:\t${overall.absent}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate Total\tLate Avg\tAbsences'];
+  const avgAbs=sessionData.length? (overall.absent/sessionData.length).toFixed(1):'0.0';
+  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,`Avg Late:\t${avgLateO}`,`Avg Absences per Session:\t${avgAbs}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate Total\tLate Avg\tAbsences'];
   names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';const avgLate=t.present? (t.late/t.present).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}\t${t.late}\t${avgLate}\t${t.absent}`);});
   sessionData.forEach((sess,i)=>{
     const total=sess.class.correct+sess.class.incorrect+sess.class.skipped;
@@ -841,7 +858,7 @@ function exportPerformance(){
     const avgS=active? (sess.class.skipped/active).toFixed(1):'0.0';
     const pct=total? (sess.class.correct/total*100).toFixed(1):'0.0';
     const avgLate=present? (lateTot/present).toFixed(1):'0.0';
-    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,`Total Late:\t${lateTot}`,`Avg Late:\t${avgLate}`,`Absences:\t${abs}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate\tAbsent');
+    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,`Avg Late:\t${avgLate}`,`Absences:\t${abs}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate\tAbsent');
     names.forEach(n=>{
       const p=sess.students[n];
       if(p){
