@@ -461,15 +461,21 @@ function shuffle(arr){
 }
 
 async function loadMusic(){
+  // attempt to read an optional playlist file for full track list
   try{
-    const res=await fetch('music/');
-    const text=await res.text();
-    const matches=[...text.matchAll(/href="([^"?]+\.mp3)"/g)];
-    if(matches.length) return matches.map(m=>'music/'+decodeURIComponent(m[1]));
+    const res=await fetch('music/playlist.json');
+    if(res.ok){
+      const list=await res.json();
+      if(Array.isArray(list) && list.length){
+        return list.map(f=>`music/${f}`);
+      }
+    }
   }catch(e){}
+  // fallback to a single default track named music.mp3
+  const single='music/music.mp3';
   try{
-    await fetch('music/music.mp3',{method:'HEAD'});
-    return ['music/music.mp3'];
+    await fetch(single);
+    return [single];
   }catch(e){}
   return [];
 }
