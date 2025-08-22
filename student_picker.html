@@ -58,6 +58,9 @@ button:hover{background:#eee;}
 
 /* Performance overlay */
 #performanceOverlay .perf-name{cursor:pointer;padding:5px 0;}
+#perfContent{max-height:60vh;max-width:80vw;overflow:auto;}
+#perfContent table{border-collapse:collapse;font-size:1.2rem;}
+#perfContent th,#perfContent td{border:1px solid #ccc;padding:4px 8px;}
 
 /* End overlay */
 #endOverlay .content{background:#fff;padding:40px;border-radius:8px;text-align:center;}
@@ -166,13 +169,16 @@ button:hover{background:#eee;}
     <ul>
       <li>q: settings</li>
       <li>space: student list</li>
-      <li>m/f/r: pick gender</li>
+      <li>m/f/r: pick male/female/random</li>
       <li>1/2/3: pick count</li>
       <li>. and /: history</li>
       <li>, and / in list: undo/redo</li>
-      <li>?: hard reset</li>
-      <li>z/x/s+click: mark correct/incorrect/unanswered</li>
+      <li>shift+click pick: repeat last</li>
+      <li>z/x/s (+Shift=-)+click result: tally</li>
+      <li>shift+click name: toggle absent</li>
+      <li>m/f/l/number+click name: gender, late, weight</li>
       <li>Shift+Esc: reset counts</li>
+      <li>?: hard reset</li>
       <li>i: controls</li>
     </ul>
   </div>
@@ -754,17 +760,17 @@ function showStudentPerf(name){
   const all=totals.correct+totals.incorrect+totals.skipped;
   const pctAll=all? (totals.correct/all*100).toFixed(1):'0.0';
   const avgLate=totals.present? (totals.late/totals.present).toFixed(1):'0.0';
-  let html='<table><tr><th>Session</th><th>Correct</th><th>Incorrect</th><th>Unanswered</th><th>Late</th><th>Total</th><th>% Correct</th><th>Absent</th></tr>';
-  html+=`<tr><td>All</td><td>${totals.correct}</td><td>${totals.incorrect}</td><td>${totals.skipped}</td><td>${totals.late} (${avgLate})</td><td>${all}</td><td>${pctAll}</td><td>${totals.absences}</td></tr>`;
+  let html='<table><tr><th>Session</th><th>Correct</th><th>Incorrect</th><th>Unanswered</th><th>Total</th><th>% Correct</th><th>Absent</th><th>Late</th></tr>';
+  html+=`<tr><td>All</td><td>${totals.correct}</td><td>${totals.incorrect}</td><td>${totals.skipped}</td><td>${all}</td><td>${pctAll}</td><td>${totals.absences}</td><td>${totals.late} (${avgLate})</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const p=sess.students[name];
     if(p){
       if(p.absent){
-        html+=`<tr><td>${i+1}</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td><td>Y</td></tr>`;
+        html+=`<tr><td>${i+1}</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td><td>Y</td><td>0</td></tr>`;
       }else{
         const total=p.correct+p.incorrect+p.skipped;
         const percent=total? (p.correct/total*100).toFixed(1):'0.0';
-        html+=`<tr><td>${i+1}</td><td>${p.correct}</td><td>${p.incorrect}</td><td>${p.skipped}</td><td>${p.late||0}</td><td>${total}</td><td>${percent}</td><td></td></tr>`;
+        html+=`<tr><td>${i+1}</td><td>${p.correct}</td><td>${p.incorrect}</td><td>${p.skipped}</td><td>${total}</td><td>${percent}</td><td>N</td><td>${p.late||0}</td></tr>`;
       }
     }else{
       html+=`<tr><td>${i+1}</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>`;
@@ -798,8 +804,8 @@ function showClassPerf(){
   const pctAll=totalAll? (all.correct/totalAll*100).toFixed(1):'0.0';
   const avgLateAll=all.present? (all.late/all.present).toFixed(1):'0.0';
   const avgAbsAll=sessionData.length? (all.absent/sessionData.length).toFixed(1):'0.0';
-  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th><th>Avg Late</th><th>Absences</th></tr>';
-  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td><td>${avgLateAll}</td><td>${avgAbsAll}</td></tr>`;
+  let html='<table><tr><th>Session</th><th>Total Qs</th><th>Total Correct</th><th>Avg Correct</th><th>Total Incorrect</th><th>Avg Incorrect</th><th>Total Unanswered</th><th>Avg Unanswered</th><th>% Correct</th><th>Absences</th><th>Avg Late</th></tr>';
+  html+=`<tr><td>All</td><td>${totalAll}</td><td>${all.correct}</td><td>${avgAllC}</td><td>${all.incorrect}</td><td>${avgAllI}</td><td>${all.skipped}</td><td>${avgAllS}</td><td>${pctAll}</td><td>${avgAbsAll}</td><td>${avgLateAll}</td></tr>`;
   sessionData.forEach((sess,i)=>{
     const totals=sess.class;
     const total=totals.correct+totals.incorrect+totals.skipped;
@@ -810,7 +816,7 @@ function showClassPerf(){
     const avgS=active? (totals.skipped/active).toFixed(1):'0.0';
     const percent=total? (totals.correct/total*100).toFixed(1):'0.0';
     const avgLate=present? (lateTot/present).toFixed(1):'0.0';
-    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td><td>${avgLate}</td><td>${abs}</td></tr>`;
+    html+=`<tr><td>${i+1}</td><td>${total}</td><td>${totals.correct}</td><td>${avgC}</td><td>${totals.incorrect}</td><td>${avgI}</td><td>${totals.skipped}</td><td>${avgS}</td><td>${percent}</td><td>${abs}</td><td>${avgLate}</td></tr>`;
   });
   html+='</table>';
   perfContent.innerHTML=html;
@@ -847,8 +853,8 @@ function exportPerformance(){
   const pctOverall=totalOverall? (overall.correct/totalOverall*100).toFixed(1):'0.0';
   const avgLateO=overall.present? (overall.late/overall.present).toFixed(1):'0.0';
   const avgAbs=sessionData.length? (overall.absent/sessionData.length).toFixed(1):'0.0';
-  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,`Avg Late:\t${avgLateO}`,`Avg Absences per Session:\t${avgAbs}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate Total\tLate Avg\tAbsences'];
-  names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';const avgLate=t.present? (t.late/t.present).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}\t${t.late}\t${avgLate}\t${t.absent}`);});
+  let lines=['Overall Summary','Class Summary',`Total Qs:\t${totalOverall}`,`Total Correct:\t${overall.correct}`,`Avg Correct:\t${avgOC}`,`Total Incorrect:\t${overall.incorrect}`,`Avg Incorrect:\t${avgOI}`,`Total Unanswered:\t${overall.skipped}`,`Avg Unanswered:\t${avgOS}`,`% Correct:\t${pctOverall}`,`Avg Absences per Session:\t${avgAbs}`,`Avg Late:\t${avgLateO}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsences\tLate Total\tLate Avg`];
+  names.forEach(n=>{const t=perStudent[n];const tot=t.correct+t.incorrect+t.skipped;const pct=tot? (t.correct/tot*100).toFixed(1):'0.0';const avgLate=t.present? (t.late/t.present).toFixed(1):'0.0';lines.push(`${n}\t${t.correct}\t${t.incorrect}\t${t.skipped}\t${tot}\t${pct}\t${t.absent}\t${t.late}\t${avgLate}`);});
   sessionData.forEach((sess,i)=>{
     const total=sess.class.correct+sess.class.incorrect+sess.class.skipped;
     let active=0,lateTot=0,abs=0,present=0;
@@ -858,11 +864,11 @@ function exportPerformance(){
     const avgS=active? (sess.class.skipped/active).toFixed(1):'0.0';
     const pct=total? (sess.class.correct/total*100).toFixed(1):'0.0';
     const avgLate=present? (lateTot/present).toFixed(1):'0.0';
-    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,`Avg Late:\t${avgLate}`,`Absences:\t${abs}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tLate\tAbsent');
+    lines.push('',`Session ${i+1}`,'Class Summary',`Total Qs:\t${total}`,`Total Correct:\t${sess.class.correct}`,`Avg Correct:\t${avgC}`,`Total Incorrect:\t${sess.class.incorrect}`,`Avg Incorrect:\t${avgI}`,`Total Unanswered:\t${sess.class.skipped}`,`Avg Unanswered:\t${avgS}`,`% Correct:\t${pct}`,`Absences:\t${abs}`,`Avg Late:\t${avgLate}`,'','Student Summaries','Name\tCorrect\tIncorrect\tUnanswered\tTotal\t%Correct\tAbsent\tLate`);
     names.forEach(n=>{
       const p=sess.students[n];
       if(p){
-        if(p.absent){lines.push(`${n}\t0\t0\t0\t0\t0.0\t0\tYes`);}else{const tot=p.correct+p.incorrect+p.skipped;const percent=tot? (p.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${tot}\t${percent}\t${p.late||0}\tNo`);}
+        if(p.absent){lines.push(`${n}\t0\t0\t0\t0\t0.0\tYes\t0`);}else{const tot=p.correct+p.incorrect+p.skipped;const percent=tot? (p.correct/tot*100).toFixed(1):'0.0';lines.push(`${n}\t${p.correct}\t${p.incorrect}\t${p.skipped}\t${tot}\t${percent}\tNo\t${p.late||0}`);}
       }else{
         lines.push(`${n}\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A`);
       }
