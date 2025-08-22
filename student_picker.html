@@ -48,7 +48,7 @@ button:hover{background:#eee;}
 #studentOverlay .name:hover{background:#eee;}
 #studentOverlay .name.inactive{color:#888;}
 #studentOverlay .name .mult{font-size:0.5em;margin-left:8px;}
-#studentInput{width:100%;margin-top:10px;padding:8px;}
+#studentInput{width:80%;margin:10px auto 0;display:block;padding:8px;box-sizing:border-box;}
 
 /* End overlay */
 #endOverlay .content{background:#fff;padding:40px;border-radius:8px;text-align:center;}
@@ -79,6 +79,7 @@ button:hover{background:#eee;}
 <div id="result"></div>
 <button id="pickBtn">Pick Student</button>
 <div id="countdown"></div>
+<div id="stats" style="position:fixed;bottom:5px;left:5px;font-size:0.8rem;"></div>
 
 <!-- Import/Export Popup -->
 <div id="dataBox" class="popup hidden" style="top:60px;left:20px;">
@@ -179,6 +180,7 @@ const modeSetting=document.getElementById('modeSetting');
 const countSetting=document.getElementById('countSetting');
 const countdown=document.getElementById('countdown');
 const gameTitle=document.getElementById('gameTitle');
+const stats=document.getElementById('stats');
 
 // Import/Export popup
 const dataBox=document.getElementById('dataBox');
@@ -213,6 +215,8 @@ const retryBtn=document.getElementById('retryBtn');
 const infoBox=document.getElementById('infoBox');
 const infoClose=document.getElementById('infoClose');
 
+updateCounts();
+
 function toggle(el){el.classList.toggle('hidden');}
 
 function buildRemaining(){
@@ -236,6 +240,7 @@ function softReset(){
   countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';
   forcedQueue=[];
   markUsed();
+  updateCounts();
 }
 
 function hardReset(){
@@ -290,6 +295,14 @@ function markUsed(){
   });
 }
 
+function updateCounts(){
+  const total=students.length;
+  const absent=students.filter(s=>s.disabled).length;
+  const present=students.filter(s=>!s.disabled).length;
+  stats.textContent=`Total: ${total} | Absent: ${absent} | Present: ${present}`;
+  stats.style.color=(total===absent+present)?'#000':'red';
+}
+
 function spawnFirework(e){
   const fw=document.createElement('div');
   fw.className='firework';
@@ -320,6 +333,7 @@ function renderStudents(){
   if(settings.mode==='noRepeat') buildRemaining();
   markUsed();
   if(settings.mode==='noRepeat') countdown.textContent=`Remaining: ${remaining.length}`;
+  updateCounts();
 }
 
 studentInput.addEventListener('keydown',e=>{
@@ -349,17 +363,23 @@ infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    if(e.shiftKey && !studentOverlay.classList.contains('hidden')){
-      students.forEach(s=>s.weight=1);
-      renderStudents();
-      modifier=null;
+    if(!studentOverlay.classList.contains('hidden')){
+      if(e.shiftKey){
+        students.forEach(s=>s.weight=1);
+        renderStudents();
+        modifier=null;
+      }else if(document.activeElement===studentInput){
+        studentInput.blur();
+      }else{
+        studentOverlay.classList.add('hidden');
+        modifier=null;
+      }
     }else{
       settingsBox.classList.add('hidden');
-      studentOverlay.classList.add('hidden');
       dataBox.classList.add('hidden');
       infoBox.classList.add('hidden');
-      modifier=null;
     }
+    return;
   }
   if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||/^\d$/.test(e.key))) modifier=e.key;
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
@@ -439,7 +459,12 @@ function performPick(tempGender=null,tempCount=null){
     pool.forEach(s=>{const w=s.weight||1;for(let i=0;i<w;i++) weighted.push(s);});
   }
   due.forEach(name=>{const s=students.find(st=>st.name===name);if(s) pick.push(s);});
-  zeros.forEach(z=>{if(!due.includes(z.name) && pick.length<count) pick.push(z);});
+  let zeroPool=zeros.filter(z=>!due.includes(z.name));
+  while(pick.length<count && zeroPool.length){
+    const zi=Math.floor(Math.random()*zeroPool.length);
+    pick.push(zeroPool[zi]);
+    zeroPool.splice(zi,1);
+  }
   if(!weighted.length && pick.length<count){result.textContent='No matching students';return;}
   for(let i=pick.length;i<count && weighted.length;i++){
     const idx=Math.floor(Math.random()*weighted.length);
