@@ -37,8 +37,11 @@ button:hover{background:#eee;}
 /* Student list overlay */
 #studentOverlay .columns{display:flex;gap:20px;}
 #studentOverlay .column{min-width:150px;}
+#studentOverlay .column.male .name{font-size:1.2rem;background:rgba(38,66,139,0.2);}
+#studentOverlay .column.female .name{font-size:1.2rem;background:rgba(255,0,255,0.2);}
 #studentOverlay .column.unknown{font-size:0.9rem;text-align:center;}
-#studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;}
+#studentOverlay .column.unknown .name{background:rgba(80,80,80,0.2);}
+#studentOverlay .name{padding:5px;border-radius:4px;margin:2px 0;cursor:pointer;transition:background 0.3s;}
 #studentOverlay .name:hover{background:#eee;}
 #studentInput{width:100%;margin-top:10px;padding:8px;}
 
@@ -96,9 +99,9 @@ button:hover{background:#eee;}
   <div class="content">
     <span class="close" id="studentClose">✖</span>
     <div class="columns">
-      <div id="maleList" class="column"></div>
+      <div id="maleList" class="column male"></div>
       <div id="unknownList" class="column unknown"></div>
-      <div id="femaleList" class="column"></div>
+      <div id="femaleList" class="column female"></div>
     </div>
     <input id="studentInput" placeholder="Type name and press Enter"/>
   </div>
@@ -158,6 +161,21 @@ const resetBtn=document.getElementById('resetBtn');
 
 function toggle(el){el.classList.toggle('hidden');}
 
+function softReset(){
+  history=[];
+  historyIndex=-1;
+  recent=[];
+  remaining=students.slice();
+  result.textContent='';
+  endOverlay.classList.add('hidden');
+}
+
+function hardReset(){
+  students=[];
+  renderStudents();
+  softReset();
+}
+
 // Dragging for data box
 dataHeader.addEventListener('mousedown',e=>{dragging=true;dragOffset.x=e.offsetX;dragOffset.y=e.offsetY;});
 document.addEventListener('mousemove',e=>{if(dragging){dataBox.style.left=(e.pageX-dragOffset.x)+'px';dataBox.style.top=(e.pageY-dragOffset.y)+'px';}});
@@ -165,7 +183,8 @@ document.addEventListener('mouseup',()=>dragging=false);
 
 // Import / Export
 dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
-dataClose.addEventListener('click',()=>dataBox.classList.add('hidden'));
+dataClose.addEventListener('mousedown',e=>e.stopPropagation());
+dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
 importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr;renderStudents();history=[];recent=[];remaining=[];result.textContent='';}}catch(e){alert('Invalid data');}});
 exportBtn.addEventListener('click',()=>{dataArea.value=JSON.stringify(students);dataArea.select();document.execCommand('copy');});
 
@@ -208,23 +227,17 @@ studentOverlay.addEventListener('click',e=>{
 
 studentClose.addEventListener('click',()=>studentOverlay.classList.add('hidden'));
 
-// Modifier keys for student overlay
-let overlayOpen=false;
-studentOverlay.addEventListener('keydown',e=>{
-  if(e.key==='f'||e.key==='m') modifier=e.key;
-});
-studentOverlay.addEventListener('keyup',e=>{
-  if(e.key==='f'||e.key==='m') modifier=null;
-});
-
-// Show overlays via keys
+// Show overlays and handle keys
 document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');}
+  if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m')) modifier=e.key;
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
-  if(e.key==='q'){toggle(settingsBox);} 
-  else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');overlayOpen=true;}
+  if(e.key==='q'){toggle(settingsBox);}
+  else if(e.key===' '){e.preventDefault();studentOverlay.classList.remove('hidden');studentInput.focus();}
   else if(e.key===','){if(history.length){historyIndex=Math.max(0,historyIndex-1);result.textContent=history[historyIndex].join(', ');}}
   else if(e.key==='.') {if(history.length){historyIndex=Math.min(history.length-1,historyIndex+1);result.textContent=history[historyIndex].join(', ');}}
-  else if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');}
+  else if(e.key==='/'){softReset();}
+  else if(e.key==='?'){hardReset();}
   else if(['m','f','r','1','2','3'].includes(e.key) && settingsBox.classList.contains('hidden') && studentOverlay.classList.contains('hidden')){
     if(e.key==='m') performPick('m',null);
     if(e.key==='f') performPick('f',null);
@@ -234,6 +247,8 @@ document.addEventListener('keydown',e=>{
     if(e.key==='3') performPick(null,3);
   }
 });
+
+document.addEventListener('keyup',e=>{if(e.key==='f'||e.key==='m') modifier=null;});
 
 pickBtn.addEventListener('click',()=>performPick());
 
@@ -280,9 +295,6 @@ function performPick(tempGender=null,tempCount=null){
 }
 
 resetBtn.addEventListener('click',()=>{remaining=students.slice();endOverlay.classList.add('hidden');});
-
-// Close with Esc for student overlay
-studentOverlay.addEventListener('keydown',e=>{if(e.key==='Escape') studentOverlay.classList.add('hidden');});
 </script>
 </body>
 </html>
