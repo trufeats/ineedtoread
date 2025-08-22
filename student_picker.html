@@ -135,7 +135,10 @@ button:hover{background:#eee;}
 <div id="endOverlay" class="overlay hidden">
   <div class="content">
     <h2>All students have been picked!</h2>
-    <button id="resetBtn">Reset</button>
+    <div class="popup-actions">
+      <button id="resetBtn">Reset</button>
+      <button id="retryBtn">Try Again</button>
+    </div>
   </div>
 </div>
 
@@ -204,6 +207,7 @@ const studentInput=document.getElementById('studentInput');
 // End overlay
 const endOverlay=document.getElementById('endOverlay');
 const resetBtn=document.getElementById('resetBtn');
+const retryBtn=document.getElementById('retryBtn');
 
 // Info overlay
 const infoBox=document.getElementById('infoBox');
@@ -344,7 +348,19 @@ infoClose.addEventListener('click',()=>infoBox.classList.add('hidden'));
 
 // Show overlays and handle keys
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){settingsBox.classList.add('hidden');studentOverlay.classList.add('hidden');dataBox.classList.add('hidden');infoBox.classList.add('hidden');modifier=null;}
+  if(e.key==='Escape'){
+    if(e.shiftKey && !studentOverlay.classList.contains('hidden')){
+      students.forEach(s=>s.weight=1);
+      renderStudents();
+      modifier=null;
+    }else{
+      settingsBox.classList.add('hidden');
+      studentOverlay.classList.add('hidden');
+      dataBox.classList.add('hidden');
+      infoBox.classList.add('hidden');
+      modifier=null;
+    }
+  }
   if(!studentOverlay.classList.contains('hidden') && (e.key==='f'||e.key==='m'||/^\d$/.test(e.key))) modifier=e.key;
   if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA' || e.target.isContentEditable) return;
   if(e.key==='q'){toggle(settingsBox);}
@@ -444,7 +460,8 @@ function performPick(tempGender=null,tempCount=null){
   }
 }
 
-resetBtn.addEventListener('click',()=>{buildRemaining();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';markUsed();});
+resetBtn.addEventListener('click',()=>{softReset();});
+retryBtn.addEventListener('click',()=>{buildRemaining();endOverlay.classList.add('hidden');countdown.textContent=settings.mode==='noRepeat'?`Remaining: ${remaining.length}`:'';markUsed();});
 </script>
 </body>
 </html>
