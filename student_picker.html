@@ -9,6 +9,7 @@ body{margin:0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:colu
 button{cursor:pointer;border:none;padding:10px 20px;font-size:1rem;border-radius:4px;transition:background 0.3s;}
 button:hover{background:#eee;}
 #pickBtn{font-size:1.5rem;padding:20px 40px;margin-top:20px;}
+#gameTitle{position:fixed;top:10px;left:50%;transform:translateX(-50%);margin:0;font-size:2rem;cursor:text;}
 #result{margin-top:20px;min-height:6rem;}
 #result .picked{font-size:6rem;animation:pop 0.6s ease forwards;opacity:0;}
 #countdown{margin-top:10px;font-size:1.2rem;}
@@ -74,6 +75,7 @@ button:hover{background:#eee;}
 <body>
 <button id="dataToggle" class="top-btn">☰</button>
 <button id="settingsToggle" class="top-btn">⚙️</button>
+<h1 id="gameTitle" contenteditable="true">Class</h1>
 <div id="result"></div>
 <button id="pickBtn">Pick Student</button>
 <div id="countdown"></div>
@@ -172,6 +174,7 @@ const genderSetting=document.getElementById('genderSetting');
 const modeSetting=document.getElementById('modeSetting');
 const countSetting=document.getElementById('countSetting');
 const countdown=document.getElementById('countdown');
+const gameTitle=document.getElementById('gameTitle');
 
 // Import/Export popup
 const dataBox=document.getElementById('dataBox');
@@ -207,16 +210,17 @@ const infoClose=document.getElementById('infoClose');
 
 function toggle(el){el.classList.toggle('hidden');}
 
-function buildRemaining(){
+function buildRemaining(preserve=false){
   remaining=[];
+  const used={};
+  if(preserve){
+    history.forEach(p=>p.forEach(n=>{used[n]=(used[n]||0)+1;}));
+  }
   students.forEach(s=>{
     if(s.disabled) return;
     const w=s.weight||1;
-    if(w===0){
-      remaining.push(s);
-    }else{
-      for(let i=0;i<w;i++) remaining.push(s);
-    }
+    const u=used[s.name]||0;
+    for(let i=u;i<w;i++) remaining.push(s);
   });
 }
 
@@ -247,8 +251,8 @@ document.addEventListener('mouseup',()=>dragging=false);
 dataToggle.addEventListener('click',()=>{dataBox.classList.toggle('hidden');});
 dataClose.addEventListener('mousedown',e=>e.stopPropagation());
 dataClose.addEventListener('click',e=>{e.stopPropagation();dataBox.classList.add('hidden');dragging=false;});
-importBtn.addEventListener('click',()=>{try{const arr=JSON.parse(dataArea.value);if(Array.isArray(arr)){students=arr.map(s=>({name:s.name,gender:s.gender||'u',weight:s.weight||1,disabled:!!s.disabled}));renderStudents();softReset();dataBox.classList.add('hidden');}}catch(e){alert('Invalid data');}});
-exportBtn.addEventListener('click',()=>{dataArea.value=JSON.stringify(students);dataArea.select();document.execCommand('copy');});
+importBtn.addEventListener('click',()=>{try{const text=dataArea.value.trim();const [title,rest]=text.split('|');gameTitle.textContent=title||'Class';students=rest?rest.split(',').filter(Boolean).map(p=>{const [n,g]=p.split(':');return {name:n,gender:(g||'u'),weight:1,disabled:false};}):[];renderStudents();softReset();dataBox.classList.add('hidden');}catch(e){alert('Invalid data');}});
+exportBtn.addEventListener('click',()=>{const title=gameTitle.textContent.trim()||'Class';const data=students.map(s=>`${s.name}:${s.gender}`).join(',');dataArea.value=`${title}|${data}`;dataArea.select();document.execCommand('copy');});
 
 // Settings controls
 settingsToggle.addEventListener('click',()=>toggle(settingsBox));
@@ -311,7 +315,7 @@ function renderStudents(){
   maleList.innerHTML=males.map(tmpl).join('');
   femaleList.innerHTML=females.map(tmpl).join('');
   unknownList.innerHTML=unknowns.map(tmpl).join('');
-  buildRemaining();
+  if(settings.mode==='noRepeat') buildRemaining(true);
   markUsed();
   if(settings.mode==='noRepeat') countdown.textContent=`Remaining: ${remaining.length}`;
 }
@@ -375,8 +379,8 @@ pickBtn.addEventListener('click',e=>{
         rounds=Math.min(3,Math.max(1,roundsAvail-1));
       }
       forcedQueue.push({name,rounds});
-      spawnFirework(e);
     }
+    spawnFirework(e);
   }
   performPick();
 });
