@@ -37,7 +37,7 @@
 
   .themeToggle{position:fixed;top:10px;right:14px;border:1px solid var(--table-border);background:var(--header-bg);color:var(--ink);border-radius:999px;padding:8px 12px;cursor:pointer;font-size:13px}
 
-  .table-wrap{overflow:auto;border-radius:var(--radius)}
+  .table-wrap{overflow:auto;border-radius:var(--radius);max-height:80vh}
   table{min-width:980px;border-collapse:separate;border-spacing:0;width:100%;background:var(--bg);border:1px solid var(--table-border);border-radius:var(--radius);table-layout:fixed}
   th,td{border-bottom:1px solid var(--table-border);padding:0;vertical-align:top}
   thead th{position:sticky;top:0;background:var(--header-bg);z-index:5}
@@ -102,6 +102,11 @@
 
   /* Header titles wrapped for measuring */
   .col-title{display:inline-block;font-weight:700}
+
+  /* Price row color states */
+  tr.price-current .cell{background:rgba(100,149,237,.25)}
+  tr.price-future  .cell{background:rgba(248,113,113,.25)}
+  tr.price-next    .cell{background:rgba(253,224,71,.25)}
 </style>
 </head>
 <body>
@@ -125,13 +130,13 @@
         </thead>
         <tbody>
           <!-- PRICE (special cycling label + dynamic values) -->
-          <tr>
-            <th class="cell row-hdr" data-row="price" scope="row"><span class="row-title" data-rowtitle="price">Current Prices</span><div class="hint" data-role="price-hint">(reveal future prices)</div></th>
+          <tr id="price-row">
+            <th class="cell row-hdr shimmer" data-row="price" scope="row"><span class="row-title" data-rowtitle="price">Current Prices</span><div class="hint" data-role="price-hint">(reveal future prices)</div></th>
             <td data-row="price" data-col="prime"><div class="cell center shimmer"><span class="price">Coming Soon</span></div></td>
-            <td data-row="price" data-col="select"><div class="cell center"><span class="price">Coming Soon</span></div></td>
+            <td data-row="price" data-col="select"><div class="cell center shimmer"><span class="price">Coming Soon</span></div></td>
             <td data-row="price" data-col="core"><div class="cell center shimmer" id="core-deal-cell"><span class="price">$1<br><span class="deal">Limited‑Time Launch Deal</span></span></div></td>
-            <td data-row="price" data-col="lite"><div class="cell center"><span class="price">Coming Soon</span></div></td>
-            <td data-row="price" data-col="exec"><div class="cell center"><span class="price">TBD</span></div></td>
+            <td data-row="price" data-col="lite"><div class="cell center shimmer"><span class="price">Coming Soon</span></div></td>
+            <td data-row="price" data-col="exec"><div class="cell center shimmer"><span class="price">TBD</span></div></td>
           </tr>
 
           <!-- Classes -->
@@ -288,7 +293,8 @@
         // Toggle rewards rainbow + shimmer
         const shouldRainbow = rewardsMode && !hide && rewardsSet.has(row+'|'+col);
         cellDiv.classList.toggle('rainbow', !!shouldRainbow);
-        cellDiv.classList.toggle('shimmer', !!shouldRainbow || (col==='prime' && row!=='price') || (row==='price' && col==='prime') || (row==='price' && col==='core' && priceMode()===0));
+        const shouldShimmer = shouldRainbow || row==='price' || (col==='prime' && row!=='price');
+        cellDiv.classList.toggle('shimmer', shouldShimmer);
       });
     }
 
@@ -431,15 +437,34 @@
       ['prime','select','lite','exec'].forEach(key=>{
         const span = priceSpans[key]; if(!span) return; span.innerHTML = set[key];
       });
-      const coreSpan = priceSpans.core; const coreCell = document.getElementById('core-deal-cell');
+      const coreSpan = priceSpans.core;
       if(coreSpan){ coreSpan.innerHTML = set.core; }
-      if(coreCell){ coreCell.classList.toggle('shimmer', priceMode()===PRICE_CURRENT); }
     }
-    function cyclePrices(){ priceIndex = (priceIndex+1)%priceCycle.length; updatePriceLabel(); updatePriceValues(); }
-    priceHdr.addEventListener('click', ()=>{ flashHeader(priceHdr); cyclePrices(); });
-    priceHdr.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); cyclePrices(); }});
+    function updatePriceRowMode(){
+      priceRow.classList.remove('price-current','price-future','price-next');
+      const mode = priceMode();
+      if(mode===PRICE_CURRENT) priceRow.classList.add('price-current');
+      else if(mode===PRICE_FUTURE) priceRow.classList.add('price-future');
+      else priceRow.classList.add('price-next');
+    }
+    function cyclePrices(){
+      priceIndex = (priceIndex+1)%priceCycle.length;
+      updatePriceLabel();
+      updatePriceValues();
+      updatePriceRowMode();
+    }
+    const priceRow = document.getElementById('price-row');
+    const pageStart = Date.now();
+    let autoTimer;
+    function schedulePriceAuto(){
+      if(Date.now() - pageStart >= 45000) return;
+      clearTimeout(autoTimer);
+      autoTimer = setTimeout(()=>{ cyclePrices(); schedulePriceAuto(); }, 8000);
+    }
+    priceHdr.addEventListener('click', ()=>{ flashHeader(priceHdr); cyclePrices(); schedulePriceAuto(); });
+    priceHdr.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); cyclePrices(); schedulePriceAuto(); }});
     priceHdr.setAttribute('tabindex','0');
-    updatePriceLabel(); updatePriceValues();
+    updatePriceLabel(); updatePriceValues(); updatePriceRowMode(); schedulePriceAuto();
 
     // Column header handlers with flash
     qsa('.col-hdr', table).forEach(hdr => {
@@ -531,6 +556,17 @@
     masterToggle.addEventListener('click', ()=>{
       rewardsMode = !rewardsMode;
       masterToggle.textContent = rewardsMode ? '(show "RienKhmer" membership tiers)' : '(reveal rewards program)';
+      if(rewardsMode){
+        Object.keys(rowHidden).forEach(row=>{
+          if(rowHidden[row]){
+            rowHidden[row]=false;
+            const hdr = table.querySelector('.row-hdr[data-row="'+row+'"]');
+            const hdrHint = hdr && hdr.querySelector('.hint');
+            if(hdr){ flashHeader(hdr); }
+            if(hdrHint) hdrHint.textContent = '(hide)';
+          }
+        });
+      }
       // Ensure visibility updates (override hide/show in rewards mode)
       applyVisibility();
       // Update prices when returning to normal
