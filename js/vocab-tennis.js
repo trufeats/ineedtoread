@@ -7,6 +7,9 @@ const xBtn = document.getElementById('xBtn');
 const timerEl = document.getElementById('timer');
 const timerSection = document.getElementById('timerSection');
 const restartBtn = document.getElementById('restart');
+const endOverlay = document.getElementById('endOverlay');
+const finalScores = document.getElementById('finalScores');
+const finalWords = document.getElementById('finalWords');
 const resizeHandle = document.getElementById('resizeTimer');
 const timeDisplay = document.getElementById('timeDisplay');
 const wordLog = document.getElementById('wordLog');
@@ -21,6 +24,7 @@ const orbRain = document.getElementById('orbRain');
 const infoOverlay = document.getElementById('infoOverlay');
 const infoClose = document.getElementById('infoClose');
 const multiplierOverlay = document.getElementById('multiplierOverlay');
+const elements = ['fire','water','earth','air'];
 
 let teams = [];
 let activeTeams = [];
@@ -62,12 +66,35 @@ setupScreen.querySelectorAll('button').forEach(btn => {
   });
 });
 
+function rayToRect(c, angle){
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  let t = Infinity;
+  if(dx !== 0){
+    const tx = dx > 0 ? (1 - c.x)/dx : (0 - c.x)/dx;
+    if(tx > 0) t = Math.min(t, tx);
+  }
+  if(dy !== 0){
+    const ty = dy > 0 ? (1 - c.y)/dy : (0 - c.y)/dy;
+    if(ty > 0) t = Math.min(t, ty);
+  }
+  return {x: c.x + dx*t, y: c.y + dy*t};
+}
+
+function sectorClip(i, n){
+  const start = -Math.PI/2 + (2*Math.PI/n)*i;
+  const end = -Math.PI/2 + (2*Math.PI/n)*(i+1);
+  const c = {x:0.5, y:0.5};
+  const p1 = rayToRect(c, start);
+  const p2 = rayToRect(c, end);
+  return `polygon(${c.x*100}% ${c.y*100}%, ${p1.x*100}% ${p1.y*100}%, ${p2.x*100}% ${p2.y*100}%)`;
+}
+
 function initTeams(num) {
   teams = [];
   activeTeams = [];
   gameArea.innerHTML = '';
   const colors = ['red','blue','green','white'];
-  const elements = ['fire','water','earth','air'];
   const positions = {
     2: [{x:33, y:33},{x:66, y:66}],
     3: [{x:50, y:17},{x:17, y:50},{x:83, y:50}],
@@ -77,13 +104,7 @@ function initTeams(num) {
     const el = document.createElement('div');
     el.className = 'team ' + colors[i];
     el.dataset.index = i;
-    if(num === 2){
-      el.style.clipPath = i === 0 ? 'polygon(0 0, 100% 0, 0 100%)' : 'polygon(100% 0, 100% 100%, 0 100%)';
-    } else if(num === 3){
-      el.style.clipPath = ['polygon(0 0, 100% 0, 50% 50%)', 'polygon(0 0, 50% 50%, 0 100%)', 'polygon(100% 0, 100% 100%, 50% 50%)'][i];
-    } else {
-      el.style.clipPath = ['polygon(0 0, 50% 50%, 0 100%)', 'polygon(0 0, 100% 0, 50% 50%)', 'polygon(100% 0, 100% 100%, 50% 50%)', 'polygon(0 100%, 50% 50%, 100% 100%)'][i];
-    }
+    el.style.clipPath = sectorClip(i, num);
     const score = document.createElement('div');
     score.className = 'score';
     score.textContent = '0';
@@ -113,7 +134,7 @@ function teamClicked(i, e){
   const x = e.clientX - gameRect.left;
   const y = e.clientY - gameRect.top;
   if(ball.classList.contains('black') || ball.classList.contains('meteor')){
-    rumbleScreen();
+    rumbleScreen(ball.classList.contains('meteor'));
   }
   currentTeam = i;
   awaitingTeamSelection = false;
@@ -157,18 +178,44 @@ function eliminateTeam(i){
 }
 
 function endGame(){
+  let winner = null;
   if(activeTeams.length === 1){
-    const last = activeTeams[0];
-    eliminateTeam(last);
+    winner = activeTeams[0];
+    eliminateTeam(winner);
   }
   controls.classList.add('hidden');
-  restartBtn.classList.remove('hidden');
   orbRain.classList.remove('hidden');
+  renderEndOverlay(winner);
 }
 
 restartBtn.addEventListener('click', () => {
   location.reload();
 });
+
+function renderEndOverlay(winner){
+  finalScores.innerHTML = '';
+  teams.forEach((t,i) => {
+    const ft = document.createElement('div');
+    ft.className = 'final-team';
+    const mark = document.createElement('div');
+    mark.className = 'watermark ' + elements[i];
+    const score = document.createElement('div');
+    score.textContent = t.score;
+    ft.appendChild(mark);
+    ft.appendChild(score);
+    if(i === winner){
+      const crown = document.createElement('div');
+      crown.className = 'crown';
+      crown.textContent = '👑';
+      ft.appendChild(crown);
+    }
+    finalScores.appendChild(ft);
+  });
+  const words = Array.from(wordLog.children).map((el,idx) => ({word:el.textContent, idx}));
+  words.sort((a,b) => b.word.length - a.word.length || a.idx - b.idx);
+  finalWords.innerHTML = words.map(w => `<span>${w.word}</span>`).join(' ');
+  endOverlay.classList.remove('hidden');
+}
 
 function moveBall(x, y){
   if(ball.style.left && ball.style.top){
@@ -190,12 +237,16 @@ function maybeMutateBall(){
   ball.classList.remove('black','meteor');
   if(r < 0.025){
     ball.classList.add('meteor');
-    flashScreen('burgundy');
-    showMultiplier('x3');
+    setTimeout(() => {
+      flashScreen('burgundy');
+      showMultiplier('x3');
+    },1000);
   } else if(r < 0.105){
     ball.classList.add('black');
-    flashScreen('charcoal');
-    showMultiplier('x2');
+    setTimeout(() => {
+      flashScreen('charcoal');
+      showMultiplier('x2');
+    },1000);
   }
 }
 
@@ -208,14 +259,15 @@ function flashScreen(type){
   }, 800);
 }
 
-function rumbleScreen(){
+function rumbleScreen(strong=false){
   screenOverlay.style.opacity = '';
   screenOverlay.className = 'grey';
-  document.body.classList.add('rumble');
+  document.body.classList.add(strong ? 'rumble-strong' : 'rumble');
+  const duration = strong ? 2000 : 1000;
   setTimeout(() => {
     screenOverlay.className = '';
-    document.body.classList.remove('rumble');
-  }, 1000);
+    document.body.classList.remove(strong ? 'rumble-strong' : 'rumble');
+  }, duration);
 }
 
 function startTimer(){

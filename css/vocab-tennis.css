@@ -239,7 +239,7 @@ html, body {
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 200;
-  transition: left 0.6s ease, top 0.6s ease;
+  transition: left 0.6s ease, top 0.6s ease, width 1s ease, height 1s ease;
 }
 
 #ball.black {
@@ -288,14 +288,14 @@ html, body {
 
 .watermark {
   position: absolute;
-  width: 160px;
-  height: 160px;
-  border: 8px solid currentColor;
+  width: 320px;
+  height: 320px;
+  border: 16px solid currentColor;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 4em;
+  font-size: 8em;
   opacity: 0.3;
   pointer-events: none;
   z-index: 100;
@@ -438,6 +438,23 @@ body.rumble {
   animation: rumble 0.5s;
 }
 
+@keyframes rumbleStrong {
+  0%,100% { transform: translate(0,0); }
+  10% { transform: translate(-20px,-10px); }
+  20% { transform: translate(20px,10px); }
+  30% { transform: translate(-25px,15px); }
+  40% { transform: translate(25px,-15px); }
+  50% { transform: translate(-30px,10px); }
+  60% { transform: translate(30px,-10px); }
+  70% { transform: translate(-20px,5px); }
+  80% { transform: translate(20px,-5px); }
+  90% { transform: translate(-15px,0); }
+}
+
+body.rumble-strong {
+  animation: rumbleStrong 2s;
+}
+
 #orbRain {
   position: fixed;
   top: 0;
@@ -466,4 +483,56 @@ body.rumble {
 @keyframes fall {
   0% { transform: translateY(-120px); opacity: 1; }
   100% { transform: translateY(calc(100vh + 120px)); opacity: 0; }
+}
+
+#endOverlay {
+  background: rgba(0,0,0,0.5);
+}
+
+#endOverlay #finalScores {
+  display: flex;
+  gap: 40px;
+  z-index: 2001;
+}
+
+#endOverlay .final-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+#endOverlay .final-team .watermark {
+  width: 160px;
+  height: 160px;
+  border-width: 8px;
+  font-size: 4em;
+  opacity: 0.5;
+}
+
+#endOverlay .final-team .crown {
+  position: absolute;
+  top: -60px;
+  font-size: 4em;
+}
+
+#endOverlay #finalWords {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.2;
+  font-size: 4vw;
+  line-height: 1.2;
+  z-index: 2000;
+  color: #fff;
+}
+
+#endOverlay #restart {
+  position: absolute;
+  bottom: 40px;
+  font-size: 4em;
+  cursor: pointer;
 }

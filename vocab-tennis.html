@@ -29,10 +29,8 @@
   <button id="checkBtn">✔</button>
   <button id="xBtn">✖</button>
 </div>
-<div id="restart" class="hidden">↻</div>
-
 <div id="quickOverlay" class="overlay quick hidden">
-  <input type="text" id="quickInput" placeholder="Type word and press Enter">
+  <input type="text" id="quickInput">
 </div>
 
 <div id="searchOverlay" class="overlay search hidden">
@@ -46,8 +44,8 @@
   <ul>
     <li><strong>Space</strong> – quick word entry</li>
     <li><strong>S</strong> – search words</li>
-    <li><strong>A</strong> – award point</li>
-    <li><strong>D</strong> – eliminate team</li>
+    <li><strong>A</strong> – Win!</li>
+    <li><strong>D</strong> – Lose!</li>
     <li><strong>Shift + drag</strong> – move/resize timer</li>
     <li><strong>Z</strong> – reset timer</li>
     <li><strong>3/2/1/5</strong> – set timer 30/20/10/5s</li>
@@ -60,6 +58,11 @@
 <div id="screenOverlay"></div>
 <div id="multiplierOverlay" class="hidden"></div>
 <div id="wordLog" class="hidden"></div>
+<div id="endOverlay" class="overlay hidden">
+  <div id="finalScores"></div>
+  <div id="finalWords"></div>
+  <div id="restart">↻</div>
+</div>
 
 <script src="js/vocab-tennis.js"></script>
 </body>
