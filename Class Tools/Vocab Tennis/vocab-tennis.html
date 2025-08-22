@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocab Tennis</title>
+<link rel="stylesheet" href="vocab-tennis.css">
+</head>
+<body>
+<div id="orbRain"></div>
+<div id="setupScreen" class="overlay">
+  <h2>Select number of teams</h2>
+  <div class="setup-buttons">
+    <button data-teams="2">2 Teams</button>
+    <button data-teams="3">3 Teams</button>
+    <button data-teams="4">4 Teams</button>
+  </div>
+</div>
+
+<div id="topic" contenteditable="true">Topic</div>
+<div id="timerSection">
+  <div id="timer"><span id="timeDisplay">30</span><div id="resizeTimer"></div></div>
+</div>
+
+<div id="gameArea"></div>
+<div id="eliminatedArea" class="hidden"></div>
+
+<div id="controls" class="hidden">
+  <button id="checkBtn">✔</button>
+  <button id="xBtn">✖</button>
+</div>
+<div id="quickOverlay" class="overlay quick hidden">
+  <input type="text" id="quickInput">
+</div>
+
+<div id="searchOverlay" class="overlay search hidden">
+  <button id="searchClose">✖</button>
+  <input type="text" id="searchInput" placeholder="Search words">
+  <div id="searchResults"></div>
+</div>
+
+<div id="infoOverlay" class="overlay hidden">
+  <button id="infoClose">✖</button>
+  <ul>
+    <li><strong>Space</strong> – quick word entry</li>
+    <li><strong>S</strong> – search words</li>
+    <li><strong>A</strong> – Win!</li>
+    <li><strong>D</strong> – Lose!</li>
+    <li><strong>Shift + drag</strong> – move/resize timer</li>
+    <li><strong>Z</strong> – reset timer</li>
+    <li><strong>3/2/1/5</strong> – set timer 30/20/10/5s</li>
+    <li><strong>,</strong> – undo word</li>
+    <li><strong>.</strong> – redo word</li>
+    <li><strong>I</strong> – toggle instructions</li>
+    <li><strong>Esc</strong> – end game early</li>
+  </ul>
+</div>
+
+<div id="screenOverlay"></div>
+<div id="multiplierOverlay" class="hidden"></div>
+<div id="wordLog"></div>
+<div id="endOverlay" class="overlay hidden">
+  <div id="finalScores"></div>
+  <div id="finalWords"></div>
+  <div id="restart">↻</div>
+  <button id="exportWords">Export Words</button>
+</div>
+
+<script src="vocab-tennis.js"></script>
+</body>
+</html>

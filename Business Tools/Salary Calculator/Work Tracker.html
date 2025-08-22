@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hourly Task Tracker</title>
+<style>
+body {font-family: sans-serif; margin:20px;}
+section {margin-bottom:30px;}
+table {border-collapse: collapse; width:100%;}
+th, td {border:1px solid #ccc; padding:4px;}
+button {margin:2px;}
+details {border:1px solid #bbb; border-radius:4px; padding:5px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+details[open] > *:not(summary) {animation:fadeIn 0.3s ease;}
+@keyframes fadeIn {from{opacity:0;}to{opacity:1;}}
+.day-card {margin-top:10px;}
+.hidden {display:none;}
+.total-line {margin-top:10px; font-weight:bold; background:#f9f9f9; padding:4px;}
+.sum-row {background:#f0f0f0;}
+#task-table th:nth-child(3), #task-table td:nth-child(3),
+#task-table th:nth-child(4), #task-table td:nth-child(4) {width:80px;}
+#task-table th:nth-child(5), #task-table td:nth-child(5) {width:110px;}
+.analytics-table td, .analytics-table th {border:1px solid #ccc; padding:4px;}
+.analytics-table .avg {border-left:2px solid #999;}
+.hide-avg .avg {display:none;}
+</style>
+</head>
+<body>
+<div id="io-controls" style="text-align:center;">
+  <button id="import-btn" type="button">Import</button>
+  <button id="export-btn" type="button">Export</button>
+</div>
+<h1 id="project-title" style="text-align:center;">Hourly Task Tracker</h1>
+
+<details id="task-section" open>
+<summary>Task Setup</summary>
+<div id="base-salary-row">$ <input type="number" id="base-salary" style="width:100px;"> per month</div>
+<table id="task-table">
+<thead><tr><th>task</th><th>code</th><th>$</th><th>time</th><th>type</th><th></th></tr></thead>
+<tbody></tbody>
+</table>
+<button id="add-task-row" type="button">Add Task</button>
+</details>
+
+<section id="work-section">
+<div id="date-picker">
+<select id="day-select"></select>
+<select id="month-select"></select>
+<select id="year-select"></select>
+<button id="add-day" type="button">Add</button>
+</div>
+<div id="day-cards"></div>
+</section>
+
+<section id="analytics">
+<h2>Analytics</h2>
+<div id="analytics-info"></div>
+<button id="toggle-avg" type="button">Hide Averages</button>
+<table class="analytics-table" id="analytics-table">
+<thead><tr><th>Code</th><th>Task</th><th>Type</th><th>Total $</th><th>Total Time</th><th class="avg">Daily Avg $</th><th class="avg">Weekly Avg $</th><th class="avg">Monthly Avg $</th><th class="avg">Yearly Avg $</th></tr></thead>
+<tbody></tbody>
+<tfoot></tfoot>
+</table>
+<div id="salary-controls"><label><input type="checkbox" id="use-actual"> Use actual month data</label></div>
+<div id="salary-card" class="day-card">
+  <div>Within Base: $<span id="within-base">0</span></div>
+  <div>Out-of-Base: $<span id="out-base">0</span></div>
+  <div class="sum-row">Salary: $<span id="total-salary">0</span></div>
+</div>
+</section>
+
+<script>
+(function(){
+const taskTableBody = document.querySelector('#task-table tbody');
+const addTaskRowBtn = document.getElementById('add-task-row');
+const taskSection = document.getElementById('task-section');
+const toggleAvgBtn = document.getElementById('toggle-avg');
+const analyticsTable = document.getElementById('analytics-table');
+const useActualChk = document.getElementById('use-actual');
+const baseSalaryInput = document.getElementById('base-salary');
+const titleElem = document.getElementById('project-title');
+const importBtn = document.getElementById('import-btn');
+const exportBtn = document.getElementById('export-btn');
+let undoStack=[], redoStack=[], lastStateStr='';
+let copyModeSource=null;
+let dragSrcRow=null;
+let dayCards={};
+
+function handleDragStart(){dragSrcRow=this;}
+function handleDragOver(e){e.preventDefault();}
+function handleDrop(e){e.preventDefault();if(dragSrcRow && dragSrcRow!==this){const rows=[...taskTableBody.children];const src=rows.indexOf(dragSrcRow);const dst=rows.indexOf(this);if(src<dst)this.after(dragSrcRow);else this.before(dragSrcRow);updateAnalytics();}}
+
+function enterCopyMode(src){copyModeSource=src;Object.entries(dayCards).forEach(([d,obj])=>{obj.copyBtn.style.background=d===src?'orange':'lightgreen';});document.addEventListener('keydown',escHandler);}
+function exitCopyMode(){Object.values(dayCards).forEach(obj=>{obj.copyBtn.style.background='orange';});copyModeSource=null;document.removeEventListener('keydown',escHandler);}
+function escHandler(e){if(e.key==='Escape'&&copyModeSource)exitCopyMode();}
+function pasteDay(src,dst){const rows=[];dayCards[src].element.querySelectorAll('tbody tr').forEach(r=>{rows.push({code:r.querySelector('.code').value,amt:r.querySelector('.amt').value});});const body=dayCards[dst].element.querySelector('tbody');body.innerHTML='';rows.forEach(data=>dayCards[dst].addEntryRow(data,true));dayCards[dst].getTotals();updateAnalytics();}
+
+function updateDayDeleteButtons(){const dates=Object.keys(dayCards).sort();dates.forEach((d,i)=>{const show=i===0||i===dates.length-1;dayCards[d].delBtn.style.display=show?'':'none';});}
+
+function addTaskRow(data={}, skipUpdate=false) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input value="${data.task||''}"></td>
+    <td><input value="${data.code||''}"></td>
+    <td><input type="number" value="${data.pay||''}" style="width:70px;"></td>
+    <td><input type="number" value="${data.time||''}" style="width:70px;"></td>
+    <td><select>
+        <option value="within"${data.type==='within'?' selected':''}>within base</option>
+        <option value="out"${data.type==='out'?' selected':''}>out-of-base</option>
+      </select></td>
+    <td><button type="button" class="drag">↕</button><button type="button" class="del">x</button></td>`;
+  const delBtn=tr.querySelector('.del');
+  delBtn.addEventListener('click', ()=>{tr.remove();updateAnalytics();});
+  const dragBtn=tr.querySelector('.drag');
+  dragBtn.addEventListener('mousedown',()=>{tr.draggable=true;});
+  tr.addEventListener('dragstart',handleDragStart);
+  tr.addEventListener('dragover',handleDragOver);
+  tr.addEventListener('drop',handleDrop);
+  tr.addEventListener('dragend',()=>{tr.draggable=false;});
+  tr.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>updateAnalytics()));
+  taskTableBody.appendChild(tr);
+  if(!skipUpdate) updateAnalytics();
+}
+
+addTaskRow(); // initial row
+addTaskRowBtn.addEventListener('click', ()=>addTaskRow());
+
+function collectTasks(){
+  const tasks={};
+  taskTableBody.querySelectorAll('tr').forEach(row=>{
+    const task=row.querySelector('td:nth-child(1) input').value.trim();
+    const code=row.querySelector('td:nth-child(2) input').value.trim();
+    const pay=parseFloat(row.querySelector('td:nth-child(3) input').value)||0;
+    const time=parseFloat(row.querySelector('td:nth-child(4) input').value)||0;
+    const type=row.querySelector('td:nth-child(5) select').value;
+    if(code) tasks[code]={task, pay, time, type};
+  });
+  return tasks;
+}
+
+// date selectors
+const daySel=document.getElementById('day-select');
+for(let i=1;i<=31;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=i;daySel.appendChild(opt);}
+const monthSel=document.getElementById('month-select');
+for(let i=1;i<=12;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=i;monthSel.appendChild(opt);}
+const yearSel=document.getElementById('year-select');
+const curYear=new Date().getFullYear();
+for(let i=curYear-1;i<=curYear+1;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=i;yearSel.appendChild(opt);}
+
+const datePicker=document.getElementById('date-picker');
+const dayCardsContainer=document.getElementById('day-cards');
+const addDayBtn=document.getElementById('add-day');
+
+function formatDate(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+
+addDayBtn.addEventListener('click',()=>{
+  const date=formatDate(yearSel.value, monthSel.value, daySel.value);
+  if(dayCards[date]) return; // already open
+  createDayCard(date);
+  datePicker.classList.add('hidden');
+  updateAnalytics();
+});
+
+function createDayCard(date, skipDefault=false){
+  const details=document.createElement('details');
+  details.open=true;
+  details.className='day-card';
+  const summary=document.createElement('summary');
+  summary.innerHTML=`<span>${date}</span>`;
+  const delBtn=document.createElement('button');
+  delBtn.type='button';
+  delBtn.textContent='x';
+  delBtn.style.float='right';
+  delBtn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    details.remove();
+    delete dayCards[date];
+    if(Object.keys(dayCards).length===0) datePicker.classList.remove('hidden');
+    updateAnalytics();
+    updateDayDeleteButtons();
+    if(copyModeSource===date) exitCopyMode();
+  });
+  const copyBtn=document.createElement('button');
+  copyBtn.type='button';
+  copyBtn.textContent='copy';
+  copyBtn.style.background='orange';
+  copyBtn.addEventListener('click',(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(!copyModeSource){enterCopyMode(date);}else if(copyModeSource===date){exitCopyMode();}else{pasteDay(copyModeSource,date);}
+  });
+  const prevBtn=document.createElement('button');
+  prevBtn.type='button';
+  prevBtn.textContent='-1d';
+  prevBtn.addEventListener('click',(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const newDate=new Date(date);
+    newDate.setDate(newDate.getDate()-1);
+    const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
+    if(!dayCards[n]){createDayCard(n); updateAnalytics();}
+  });
+  const nextBtn=document.createElement('button');
+  nextBtn.type='button';
+  nextBtn.textContent='+1d';
+  nextBtn.addEventListener('click',(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const newDate=new Date(date);
+    newDate.setDate(newDate.getDate()+1);
+    const n=formatDate(newDate.getFullYear(), newDate.getMonth()+1, newDate.getDate());
+    if(!dayCards[n]){createDayCard(n); updateAnalytics();}
+  });
+  summary.appendChild(prevBtn);
+  summary.appendChild(nextBtn);
+  summary.appendChild(copyBtn);
+  summary.appendChild(delBtn);
+  details.appendChild(summary);
+
+  const table=document.createElement('table');
+  table.innerHTML='<thead><tr><th>code</th><th>task</th><th>amt</th><th>time</th><th>$</th><th></th></tr></thead><tbody></tbody>';
+  const tBody=table.querySelector('tbody');
+  details.appendChild(table);
+  const addRowBtn=document.createElement('button');
+  addRowBtn.type='button';
+  addRowBtn.textContent='Add Row';
+  details.appendChild(addRowBtn);
+  const totals=document.createElement('div');
+  totals.className='total-line';
+  totals.textContent='Total Time: 0 | Total $: 0';
+  details.appendChild(totals);
+
+  function addEntryRow(data={}, skip=false){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><input class="code" value="${data.code||''}"></td>
+      <td class="task"></td>
+      <td><input type="number" class="amt" value="${data.amt||0}" style="width:60px;"></td>
+      <td class="time">0</td>
+      <td class="pay">0</td>
+      <td><button type="button" class="del">x</button></td>`;
+    const codeInput=tr.querySelector('.code');
+    const amtInput=tr.querySelector('.amt');
+
+      function recalc(){
+        const tasks=collectTasks();
+        const code=codeInput.value.trim();
+        const taskData=tasks[code];
+        const amt=parseFloat(amtInput.value)||0;
+        if(taskData){
+          tr.querySelector('.task').textContent=taskData.task;
+          const timeVal=taskData.time*amt;
+          tr.querySelector('.time').textContent=timeVal.toFixed(2);
+          tr.querySelector('.pay').textContent=(taskData.pay*taskData.time*amt).toFixed(2);
+        }else{
+          tr.querySelector('.task').textContent='';
+          tr.querySelector('.time').textContent='0';
+          tr.querySelector('.pay').textContent='0';
+        }
+      updateTotals();
+    }
+    codeInput.addEventListener('change',recalc);
+    amtInput.addEventListener('input',recalc);
+    tr.querySelector('.del').addEventListener('click',()=>{tr.remove();updateTotals();});
+    tBody.appendChild(tr);
+    if(!skip) updateTotals();
+  }
+
+  function updateTotals(skip=false){
+    let t=0,p=0;
+    tBody.querySelectorAll('tr').forEach(r=>{
+      t+=parseFloat(r.querySelector('.time').textContent)||0;
+      p+=parseFloat(r.querySelector('.pay').textContent)||0;
+    });
+    totals.textContent=`Total Time: ${t.toFixed(2)} | Total $: ${p.toFixed(2)}`;
+    updateAnalytics(skip);
+  }
+
+  if(!skipDefault) addEntryRow();
+  addRowBtn.addEventListener('click',()=>addEntryRow());
+  dayCards[date]={element:details, getTotals:updateTotals, addEntryRow:addEntryRow, delBtn, copyBtn};
+  dayCardsContainer.appendChild(details);
+  updateDayDeleteButtons();
+}
+
+function gatherAllData(){
+  const data={}; // code -> {task, pay, time}
+  Object.values(dayCards).forEach(card=>{
+  card.element.querySelectorAll('tbody tr').forEach(r=>{
+    const code=r.querySelector('.code').value.trim();
+    const tasks=collectTasks();
+    const def=tasks[code];
+    const amt=parseFloat(r.querySelector('.amt').value)||0;
+    if(code && def){
+      const time=def.time*amt;
+      const pay=def.pay*def.time*amt;
+      if(!data[code]) data[code]={task:def.task,time:0,pay:0,type:def.type};
+      data[code].time+=time;
+      data[code].pay+=pay;
+    }
+  });
+  });
+  return data;
+}
+
+function updateAnalytics(skipSave=false){
+  const tbody=document.querySelector('#analytics-table tbody');
+  const tfoot=document.querySelector('#analytics-table tfoot');
+  tbody.innerHTML='';
+  tfoot.innerHTML='';
+  const data=gatherAllData();
+  const daysCount=Object.keys(dayCards).length;
+  document.getElementById('analytics-info').textContent=`Days tracked: ${daysCount}`;
+  let totalPay=0,totalTime=0;
+  let withinActual=0,outActual=0,withinMonthly=0,outMonthly=0;
+  Object.entries(data).forEach(([code, info])=>{
+    totalPay+=info.pay; totalTime+=info.time;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${code}</td><td>${info.task}</td><td>${info.type==='within'?'within base':'out-of-base'}</td><td>${info.pay.toFixed(2)}</td><td>${info.time.toFixed(2)}</td>`;
+    const daily=(daysCount?info.pay/daysCount:0).toFixed(2);
+    const weekly=(daysCount?info.pay/(daysCount/7):0).toFixed(2);
+    const monthly=(daysCount?info.pay/(daysCount/30):0).toFixed(2);
+    const yearly=(daysCount?info.pay/(daysCount/365):0).toFixed(2);
+    tr.innerHTML+=`<td class="avg">${daily}</td><td class="avg">${weekly}</td><td class="avg">${monthly}</td><td class="avg">${yearly}</td>`;
+    tbody.appendChild(tr);
+    if(info.type==='within'){withinActual+=info.pay; withinMonthly+=parseFloat(monthly);} else if(info.type==='out'){outActual+=info.pay; outMonthly+=parseFloat(monthly);}
+  });
+  const tr=document.createElement('tr');
+  tr.className='sum-row';
+  tr.innerHTML=`<td>ALL</td><td>-</td><td>-</td><td>${totalPay.toFixed(2)}</td><td>${totalTime.toFixed(2)}</td>`;
+  const daily=(daysCount?totalPay/daysCount:0).toFixed(2);
+  const weekly=(daysCount?totalPay/(daysCount/7):0).toFixed(2);
+  const monthly=(daysCount?totalPay/(daysCount/30):0).toFixed(2);
+  const yearly=(daysCount?totalPay/(daysCount/365):0).toFixed(2);
+  tr.innerHTML+=`<td class="avg">${daily}</td><td class="avg">${weekly}</td><td class="avg">${monthly}</td><td class="avg">${yearly}</td>`;
+  tfoot.appendChild(tr);
+  updateSalary(withinActual,outActual,withinMonthly,outMonthly);
+  if(!skipSave) saveState();
+}
+
+function updateSalary(withinActual,outActual,withinMonthly,outMonthly){
+  const base=parseFloat(document.getElementById('base-salary').value)||0;
+  const useActual=document.getElementById('use-actual').checked;
+  const within=useActual?withinActual:withinMonthly;
+  const out=useActual?outActual:outMonthly;
+  document.getElementById('within-base').textContent=within.toFixed(2);
+  document.getElementById('out-base').textContent=out.toFixed(2);
+  const salary=Math.max(base,within)+out;
+  document.getElementById('total-salary').textContent=salary.toFixed(2);
+}
+
+function getState(){
+  const tasks=[];
+  taskTableBody.querySelectorAll('tr').forEach(r=>{
+    tasks.push({s:r.querySelector('td:nth-child(1) input').value,k:r.querySelector('td:nth-child(2) input').value,r:parseFloat(r.querySelector('td:nth-child(3) input').value)||0,m:parseFloat(r.querySelector('td:nth-child(4) input').value)||0,y:r.querySelector('td:nth-child(5) select').value==='out'?'o':'w'});
+  });
+  const days=[];
+  Object.entries(dayCards).forEach(([d,card])=>{
+    const entries=[];
+    card.element.querySelectorAll('tbody tr').forEach(r=>{entries.push({c:r.querySelector('.code').value,a:parseFloat(r.querySelector('.amt').value)||0});});
+    days.push({d, e:entries});
+  });
+  return {n:titleElem.textContent,b:parseFloat(baseSalaryInput.value)||0,t:tasks,d:days};
+}
+
+function loadState(state){
+  titleElem.textContent=state.n||'Hourly Task Tracker';
+  baseSalaryInput.value=state.b||'';
+  taskTableBody.innerHTML='';
+  (state.t||[]).forEach(t=>addTaskRow({task:t.s,code:t.k,pay:t.r,time:t.m,type:t.y==='o'?'out':'within'},true));
+  if(!state.t||state.t.length===0) addTaskRow({},true);
+  dayCardsContainer.innerHTML='';
+  dayCards={};
+  (state.d||[]).forEach(day=>{createDayCard(day.d,true);day.e.forEach(e=>dayCards[day.d].addEntryRow({code:e.c,amt:e.a},true));dayCards[day.d].getTotals(true);});
+  if(Object.keys(dayCards).length===0) datePicker.classList.remove('hidden'); else datePicker.classList.add('hidden');
+  updateDayDeleteButtons();
+  updateAnalytics(true);
+}
+
+function saveState(){const s=JSON.stringify(getState());if(s!==lastStateStr){undoStack.push(s);lastStateStr=s;redoStack=[];}}
+
+function loadStateFromStr(str){const obj=JSON.parse(str);loadState(obj);lastStateStr=str;}
+
+toggleAvgBtn.addEventListener('click',()=>{
+  analyticsTable.classList.toggle('hide-avg');
+  toggleAvgBtn.textContent=analyticsTable.classList.contains('hide-avg')?'Show Averages':'Hide Averages';
+});
+useActualChk.addEventListener('change',updateAnalytics);
+baseSalaryInput.addEventListener('input',updateAnalytics);
+
+importBtn.addEventListener('click',()=>{const str=prompt('Paste data');if(!str)return;try{const obj=JSON.parse(str);loadState(obj);undoStack=[JSON.stringify(getState())];redoStack=[];lastStateStr=undoStack[0];}catch(e){alert('Invalid data');}});
+exportBtn.addEventListener('click',()=>{const include=confirm('Export section 2 data?');const name=prompt('Project name?',titleElem.textContent);if(name) titleElem.textContent=name;const state=getState();state.n=titleElem.textContent;if(!include) delete state.d;const str=JSON.stringify(state);prompt('Copy data',str);});
+
+document.addEventListener('keydown',e=>{if(e.key===','&&!e.target.closest('input,textarea,select')){if(undoStack.length>1){redoStack.push(undoStack.pop());loadStateFromStr(undoStack[undoStack.length-1]);}}else if(e.key==='.'&&!e.target.closest('input,textarea,select')){if(redoStack.length){const s=redoStack.pop();undoStack.push(s);loadStateFromStr(s);}}});
+
+saveState();
+
+})();
+</script>
+</body>
+</html>
