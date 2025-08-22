@@ -27,6 +27,36 @@ const infoClose = document.getElementById('infoClose');
 const multiplierOverlay = document.getElementById('multiplierOverlay');
 const elements = ['fire','water','earth','air'];
 
+// Background music playlist
+const musicTracks = [
+  'music/Severance.mp3' // add additional tracks here
+];
+
+// Utility to shuffle an array (Fisher-Yates)
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+let playOrder = [];
+const bgm = new Audio();
+
+function playNextTrack() {
+  if (playOrder.length === 0) {
+    playOrder = shuffle(musicTracks.slice());
+  }
+  bgm.src = playOrder.shift();
+  bgm.play();
+}
+
+bgm.addEventListener('ended', playNextTrack);
+document.addEventListener('click', () => {
+  playNextTrack();
+}, { once: true });
+
 let teams = [];
 let activeTeams = [];
 let currentTeam = null;
