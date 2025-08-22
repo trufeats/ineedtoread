@@ -98,6 +98,7 @@ button:hover{background:#eee;}
 <div id="stats" style="position:fixed;bottom:5px;left:5px;font-size:0.8rem;"></div>
 <button id="perfBtn" style="position:fixed;bottom:10px;right:90px;">Performance</button>
 <button id="perfExport" style="position:fixed;bottom:10px;right:10px;">Export</button>
+<audio id="bgm"></audio>
 
 <!-- Import/Export Popup -->
 <div id="dataBox" class="popup hidden" style="top:60px;left:20px;">
@@ -260,6 +261,10 @@ const perfContent=document.getElementById('perfContent');
 const perfTitle=document.getElementById('perfTitle');
 const perfBack=document.getElementById('perfBack');
 const perfClassBtn=document.getElementById('perfClassBtn');
+const bgm=document.getElementById('bgm');
+let musicStarted=false;
+let musicTracks=[];
+let musicIndex=0;
 
 // Import/Export popup
 const dataBox=document.getElementById('dataBox');
@@ -446,6 +451,51 @@ function updateCounts(){
   const present=students.filter(s=>!s.disabled).length;
   stats.textContent=`Total: ${total} | Absent: ${absent} | Present: ${present}`;
   stats.style.color=(total===absent+present)?'#000':'red';
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+async function loadMusic(){
+  try{
+    const res=await fetch('music/');
+    const text=await res.text();
+    const matches=[...text.matchAll(/href="([^"?]+\.mp3)"/g)];
+    if(matches.length) return matches.map(m=>'music/'+decodeURIComponent(m[1]));
+  }catch(e){}
+  try{
+    await fetch('music/music.mp3',{method:'HEAD'});
+    return ['music/music.mp3'];
+  }catch(e){}
+  return [];
+}
+
+function playTrack(){
+  if(!musicTracks.length) return;
+  bgm.src=musicTracks[musicIndex];
+  bgm.play().catch(()=>{});
+}
+
+async function startMusic(){
+  if(musicStarted) return;
+  musicStarted=true;
+  musicTracks=await loadMusic();
+  if(!musicTracks.length) return;
+  shuffle(musicTracks);
+  musicIndex=0;
+  playTrack();
+  bgm.addEventListener('ended',()=>{
+    musicIndex++;
+    if(musicIndex>=musicTracks.length){
+      shuffle(musicTracks);
+      musicIndex=0;
+    }
+    playTrack();
+  });
 }
 
 function playBeep(){
@@ -654,6 +704,7 @@ document.addEventListener('keyup',e=>{
 
 
 pickBtn.addEventListener('click',e=>{
+  startMusic();
   if(e.shiftKey){
     const last=result.querySelector('.picked');
     if(last){
