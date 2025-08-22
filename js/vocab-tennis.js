@@ -7,6 +7,7 @@ const xBtn = document.getElementById('xBtn');
 const timerEl = document.getElementById('timer');
 const timerSection = document.getElementById('timerSection');
 const restartBtn = document.getElementById('restart');
+const resizeBtn = document.getElementById('resizeTimer');
 const wordInput = document.getElementById('wordInput');
 const wordLog = document.getElementById('wordLog');
 const toggleLog = document.getElementById('toggleLog');
@@ -17,6 +18,7 @@ const searchInput = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
 const searchClose = document.getElementById('searchClose');
 const screenOverlay = document.getElementById('screenOverlay');
+const orbRain = document.getElementById('orbRain');
 
 let teams = [];
 let activeTeams = [];
@@ -48,6 +50,7 @@ setupScreen.querySelectorAll('button').forEach(btn => {
     const num = parseInt(btn.dataset.teams);
     initTeams(num);
     setupScreen.style.display = 'none';
+    orbRain.classList.add('hidden');
   });
 });
 
@@ -69,13 +72,6 @@ function initTeams(num) {
     }
     const score = document.createElement('div');
     score.className = 'score';
-    if(num === 2){
-      score.classList.add(i === 0 ? 'top-left' : 'bottom-right');
-    } else if(num === 3){
-      score.classList.add(['center','bottom-left','bottom-right'][i]);
-    } else {
-      score.classList.add(['top-left','top-right','bottom-right','bottom-left'][i]);
-    }
     score.textContent = '0';
     el.appendChild(score);
     el.addEventListener('click', (e) => teamClicked(i, e));
@@ -145,6 +141,7 @@ function endGame(){
   }
   controls.classList.add('hidden');
   restartBtn.classList.remove('hidden');
+  orbRain.classList.remove('hidden');
 }
 
 restartBtn.addEventListener('click', () => {
@@ -200,7 +197,7 @@ function rumbleScreen(){
 function startTimer(){
   stopTimer();
   remainingTime = timerDuration;
-  updateTimer();
+  tick();
   timerInterval = setInterval(tick, 1000);
   paused = false;
 }
@@ -447,3 +444,21 @@ searchOverlay.addEventListener('keydown', (e) => {
 });
 
 searchClose.addEventListener('click', closeSearch);
+
+resizeBtn.addEventListener('click', () => {
+  timerEl.classList.toggle('large');
+});
+
+function spawnRain(container){
+  for(let i=0;i<30;i++){
+    const orb = document.createElement('div');
+    orb.className = 'rain-orb';
+    orb.style.left = Math.random()*100 + '%';
+    const duration = 3 + Math.random()*3;
+    orb.style.animationDuration = duration + 's';
+    orb.style.animationDelay = (-Math.random()*duration) + 's';
+    container.appendChild(orb);
+  }
+}
+
+spawnRain(orbRain);

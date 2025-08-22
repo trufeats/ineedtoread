@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/vocab-tennis.css">
 </head>
 <body>
+<div id="orbRain"></div>
 <div id="setupScreen" class="overlay">
   <h2>Select number of teams</h2>
   <div class="setup-buttons">
@@ -16,22 +17,22 @@
   </div>
 </div>
 
-<header>
-  <div id="topic" contenteditable="true">Topic</div>
-  <div id="timerSection">
-    <div id="timer">30</div>
-    <div id="timeControls">
-      <button class="time-set" data-time="30">30s</button>
-      <button class="time-set" data-time="20">20s</button>
-      <button class="time-set" data-time="10">10s</button>
-    </div>
-    <div id="wordInputContainer">
-      <input type="text" id="wordInput" placeholder="Enter word and press Enter">
-      <button id="toggleLog">–</button>
-    </div>
-    <div id="wordLog"></div>
+<div id="topic" contenteditable="true">Topic</div>
+<div id="timerSection">
+  <div id="timer">30</div>
+  <button id="resizeTimer">⇲</button>
+  <div id="timeControls">
+    <button class="time-set" data-time="30">30s</button>
+    <button class="time-set" data-time="20">20s</button>
+    <button class="time-set" data-time="10">10s</button>
+    <button class="time-set" data-time="5">5s</button>
   </div>
-</header>
+  <div id="wordInputContainer">
+    <input type="text" id="wordInput" placeholder="Enter word and press Enter">
+    <button id="toggleLog">–</button>
+  </div>
+  <div id="wordLog"></div>
+</div>
 
 <div id="gameArea"></div>
 <div id="eliminatedArea" class="hidden"></div>

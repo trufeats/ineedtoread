@@ -47,23 +47,15 @@ html, body {
 }
 
 #topic {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 2.5em;
   cursor: text;
   text-align: center;
-  flex: 1;
+  z-index: 1000;
   pointer-events: auto;
-}
-
-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 900;
 }
 
 #timerSection {
@@ -85,8 +77,26 @@ header {
   justify-content: center;
   font-size: 2.5em;
   cursor: pointer;
-  margin-left: auto;
   transition: transform 0.3s;
+}
+
+#timer.large {
+  width: 150px;
+  height: 150px;
+  font-size: 3.5em;
+}
+
+#resizeTimer {
+  margin-top: 5px;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#resizeTimer:hover {
+  background: rgba(255,255,255,0.2);
 }
 
 #timer:active {
@@ -199,6 +209,16 @@ header {
 .team.blue { background-image: linear-gradient(-45deg, #4d4dff, #0000ff, #000099, #4d4dff); }
 .team.green { background-image: linear-gradient(-45deg, #4dff4d, #00cc00, #006600, #4dff4d); }
 .team.white { background-image: linear-gradient(-45deg, #ffffff, #eeeeee, #cccccc, #ffffff); color: #000; }
+.team.white::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(from 0deg, rgba(255,255,255,0.2), rgba(150,150,150,0.3), rgba(200,200,200,0.2));
+  mix-blend-mode: overlay;
+  animation: whiteSpin 8s linear infinite, whitePulse 6s ease-in-out infinite;
+  pointer-events: none;
+  clip-path: inherit;
+}
 .team.white::after {
   content: '';
   position: absolute;
@@ -206,7 +226,7 @@ header {
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), transparent 60%),
               radial-gradient(circle at 70% 70%, rgba(180,180,180,0.4), transparent 60%),
               radial-gradient(circle at 40% 60%, rgba(120,120,120,0.5), transparent 60%);
-  animation: whiteOrbs 12s linear infinite;
+  animation: whiteOrbs 12s linear infinite, whitePulse 6s ease-in-out infinite, whiteSpin 20s linear infinite reverse;
   mix-blend-mode: screen;
   pointer-events: none;
   clip-path: inherit;
@@ -216,6 +236,16 @@ header {
   0% { transform: rotate(0deg) scale(1); }
   50% { transform: rotate(180deg) scale(1.2); }
   100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes whitePulse {
+  0%,100% { opacity: 0.6; filter: blur(0); }
+  50% { opacity: 1; filter: blur(2px); }
+}
+
+@keyframes whiteSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes colorShift {
@@ -335,15 +365,11 @@ header {
   position: absolute;
   font-size: 2em;
   z-index: 300;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
-
-.score.left { top: 5px; left: 5px; }
-.score.right { top: 5px; right: 5px; }
-.score.center { top: 5px; left: 50%; transform: translateX(-50%); }
-.score.top-left { top: 5px; left: 5px; }
-.score.top-right { top: 5px; right: 5px; }
-.score.bottom-left { bottom: 5px; left: 5px; }
-.score.bottom-right { bottom: 5px; right: 5px; }
 
 #quickOverlay input {
   font-size: 2em;
@@ -425,4 +451,34 @@ header {
 
 body.rumble {
   animation: rumble 0.5s;
+}
+
+#orbRain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 100;
+}
+
+#orbRain.hidden {
+  display: none;
+}
+
+.rain-orb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffff66, #ffaa00);
+  box-shadow: 0 0 15px 5px rgba(255,255,0,0.8);
+  animation: fall linear infinite;
+}
+
+@keyframes fall {
+  0% { transform: translateY(-120px); opacity: 1; }
+  100% { transform: translateY(calc(100vh + 120px)); opacity: 0; }
 }
