@@ -341,7 +341,7 @@
 
     function setRowHidden(row, hide){
       rowHidden[row] = !!hide;
-      const hdr = table.querySelector('.row-hdr[data-row="'+row+'"];');
+      const hdr = table.querySelector('.row-hdr[data-row="'+row+'"]');
       const hdrHint = hdr && hdr.querySelector('.hint');
       if(hdr){ flashHeader(hdr); }
       if(hdrHint) hdrHint.textContent = hide ? '(show)' : '(hide)';
@@ -352,7 +352,7 @@
 
     // Measure header title width and set min width when narrowing
     function setColWidthToTitle(col, enable){
-      const th = table.querySelector('th.col-hdr[data-col="'+col+'"];');
+      const th = table.querySelector('th.col-hdr[data-col="'+col+'"]');
       if(!th) return;
       const title = th.querySelector('.col-title') || th;
       const rect = title.getBoundingClientRect();
@@ -370,7 +370,7 @@
 
     function setColHidden(col, hide){
       colHidden[col] = !!hide;
-      const hdr = table.querySelector('.col-hdr[data-col="'+col+'"];');
+      const hdr = table.querySelector('.col-hdr[data-col="'+col+'"]');
       const hdrHint = hdr && hdr.querySelector('.hint');
       if(hdr){ flashHeader(hdr); }
       if(hdrHint) hdrHint.textContent = hide ? '(show)' : '(hide)';
