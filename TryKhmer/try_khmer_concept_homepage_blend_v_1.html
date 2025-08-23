@@ -16,6 +16,13 @@
       --bg: #f8f7f1;           /* page background */
       --card: #EEE6DA;         /* speech bubble fill (legacy) */
       --tile: #F1EADF;        /* off‑white background tiles */
+      --tile1: #f4f2ea;
+      --tile2: #f5f0e4;
+      --tile3: #ece5d5;
+      --tile4: #e5d5c1;
+      --tile5: #ded1b7;
+      --tile6: #d9c5aa;
+      --tile7: #cdbca2;
       --ink: #594a39;          /* heading / primary text */
       --ink-soft: #826d4f;     /* body text */
       --line: #BDAF9A;         /* subtle borders/outlines */
@@ -30,6 +37,13 @@
       --bg: #2b251b;
       --card: #3a2f24;
       --tile: #463a2d;
+      --tile1: #4a3c2f;
+      --tile2: #433527;
+      --tile3: #3c2f23;
+      --tile4: #34271b;
+      --tile5: #2d2116;
+      --tile6: #261b10;
+      --tile7: #20170c;
       --ink: #f4f2ea;
       --ink-soft: #ded1b7;
       --line: #8a7b66;
@@ -155,6 +169,25 @@
     body.dark .hero-logo { filter: drop-shadow(0 30px 45px rgba(255,255,255,0.45)); }
 
     /* Right-side off-white background boxes (from Screenshot 3) */
+    @property --angle {
+      syntax: '<angle>';
+      inherits: false;
+      initial-value: 0deg;
+    }
+    @keyframes tileShift {
+      0%   { background: linear-gradient(var(--angle), var(--tile1), var(--tile2)); }
+      14.285% { background: linear-gradient(var(--angle), var(--tile2), var(--tile3)); }
+      28.571% { background: linear-gradient(var(--angle), var(--tile3), var(--tile4)); }
+      42.857% { background: linear-gradient(var(--angle), var(--tile4), var(--tile5)); }
+      57.142% { background: linear-gradient(var(--angle), var(--tile5), var(--tile6)); }
+      71.428% { background: linear-gradient(var(--angle), var(--tile6), var(--tile7)); }
+      85.714% { background: linear-gradient(var(--angle), var(--tile7), var(--tile1)); }
+      100% { background: linear-gradient(var(--angle), var(--tile1), var(--tile2)); }
+    }
+    @keyframes rotate {
+      to { --angle: 360deg; }
+    }
+
     .bg-tiles {
       position: absolute; right: -21px; top: -542px;
       display: grid;
@@ -166,25 +199,12 @@
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
+      background: var(--tile1);
+      animation: tileShift 20s ease-in-out infinite, rotate 40s linear infinite;
     }
     body.dark .bg-tiles .tile {
       box-shadow: inset 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.4);
     }
-
-    .bg-tiles .shade1 { background: #f4f2ea; }
-    .bg-tiles .shade2 { background: #f5f0e4; }
-    .bg-tiles .shade3 { background: #ece5d5; }
-    .bg-tiles .shade4 { background: #e5d5c1; }
-    .bg-tiles .shade5 { background: #ded1b7; }
-    .bg-tiles .shade6 { background: #d9c5aa; }
-    .bg-tiles .shade7 { background: #cdbca2; }
-    body.dark .bg-tiles .shade1 { background: #4a3c2f; }
-    body.dark .bg-tiles .shade2 { background: #433527; }
-    body.dark .bg-tiles .shade3 { background: #3c2f23; }
-    body.dark .bg-tiles .shade4 { background: #34271b; }
-    body.dark .bg-tiles .shade5 { background: #2d2116; }
-    body.dark .bg-tiles .shade6 { background: #261b10; }
-    body.dark .bg-tiles .shade7 { background: #20170c; }
     @media (max-width: 980px) {
       .bg-tiles { display: none; }
     }
@@ -215,29 +235,29 @@
     <!-- Hero (layout from 3, speech bubble & logo from 2, colors from 1) -->
     <section class="hero">
       <div class="bg-tiles" aria-hidden="true">
-        <div class="tile shade7" style="grid-row:1;grid-column:7;"></div>
-        <div class="tile shade7" style="grid-row:2;grid-column:7;"></div>
-        <div class="tile shade6" style="grid-row:3;grid-column:6;"></div>
-        <div class="tile shade4" style="grid-row:4;grid-column:4;"></div>
-        <div class="tile shade5" style="grid-row:4;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:4;grid-column:6;"></div>
-        <div class="tile shade4" style="grid-row:5;grid-column:4;"></div>
-        <div class="tile shade5" style="grid-row:5;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:5;grid-column:6;"></div>
-        <div class="tile shade5" style="grid-row:6;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:6;grid-column:6;"></div>
-        <div class="tile shade7" style="grid-row:6;grid-column:7;"></div>
-        <div class="tile shade5" style="grid-row:7;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:7;grid-column:6;"></div>
-        <div class="tile shade4" style="grid-row:8;grid-column:4;"></div>
-        <div class="tile shade5" style="grid-row:8;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:8;grid-column:6;"></div>
-        <div class="tile shade5" style="grid-row:9;grid-column:5;"></div>
-        <div class="tile shade7" style="grid-row:10;grid-column:7;"></div>
-        <div class="tile shade6" style="grid-row:11;grid-column:6;"></div>
-        <div class="tile shade7" style="grid-row:11;grid-column:7;"></div>
-        <div class="tile shade4" style="grid-row:12;grid-column:4;"></div>
-        <div class="tile shade6" style="grid-row:12;grid-column:6;"></div>
+        <div class="tile" style="grid-row:1;grid-column:7;"></div>
+        <div class="tile" style="grid-row:2;grid-column:7;"></div>
+        <div class="tile" style="grid-row:3;grid-column:6;"></div>
+        <div class="tile" style="grid-row:4;grid-column:4;"></div>
+        <div class="tile" style="grid-row:4;grid-column:5;"></div>
+        <div class="tile" style="grid-row:4;grid-column:6;"></div>
+        <div class="tile" style="grid-row:5;grid-column:4;"></div>
+        <div class="tile" style="grid-row:5;grid-column:5;"></div>
+        <div class="tile" style="grid-row:5;grid-column:6;"></div>
+        <div class="tile" style="grid-row:6;grid-column:5;"></div>
+        <div class="tile" style="grid-row:6;grid-column:6;"></div>
+        <div class="tile" style="grid-row:6;grid-column:7;"></div>
+        <div class="tile" style="grid-row:7;grid-column:5;"></div>
+        <div class="tile" style="grid-row:7;grid-column:6;"></div>
+        <div class="tile" style="grid-row:8;grid-column:4;"></div>
+        <div class="tile" style="grid-row:8;grid-column:5;"></div>
+        <div class="tile" style="grid-row:8;grid-column:6;"></div>
+        <div class="tile" style="grid-row:9;grid-column:5;"></div>
+        <div class="tile" style="grid-row:10;grid-column:7;"></div>
+        <div class="tile" style="grid-row:11;grid-column:6;"></div>
+        <div class="tile" style="grid-row:11;grid-column:7;"></div>
+        <div class="tile" style="grid-row:12;grid-column:4;"></div>
+        <div class="tile" style="grid-row:12;grid-column:6;"></div>
       </div>
       <div class="headline">
         <h1>Learn Khmer,<br/>unlock adventure</h1>
@@ -261,66 +281,16 @@
     // Year stamp
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Helper functions for color interpolation
-    const hexToRgb = hex => {
-      const num = parseInt(hex.slice(1), 16);
-      return [num >> 16 & 255, num >> 8 & 255, num & 255];
-    };
-    const mix = (a, b, t) => [
-      a[0] + (b[0] - a[0]) * t,
-      a[1] + (b[1] - a[1]) * t,
-      a[2] + (b[2] - a[2]) * t
-    ];
-    const rgbString = c => `rgb(${c.map(v => Math.round(v)).join(',')})`;
-
-    const lightColors = ['#f4f2ea','#f5f0e4','#ece5d5','#e5d5c1','#ded1b7','#d9c5aa','#cdbca2'].map(hexToRgb);
-    const darkColors = ['#4a3c2f','#433527','#3c2f23','#34271b','#2d2116','#261b10','#20170c'].map(hexToRgb);
-    let colors = lightColors;
-
-    const updateColors = () => {
-      colors = document.body.classList.contains('dark') ? darkColors : lightColors;
-    };
-
-    const tiles = document.querySelectorAll('.bg-tiles .tile');
-
-    tiles.forEach(tile => {
-      let index = Math.floor(Math.random() * colors.length);
-      let angleStart = Math.random() * 360;
-      let angleEnd = angleStart + (Math.random() * 180 - 90);
-      let duration = 6000 + Math.random() * 4000;
-      let start = performance.now();
-      let offset = Math.random() * duration;
-
-      const frame = now => {
-        let t = ((now - start + offset) % duration) / duration;
-        if (now - start + offset >= duration) {
-          index = (index + 1) % colors.length;
-          angleStart = angleEnd;
-          angleEnd = angleStart + (Math.random() * 180 - 90);
-          start = now;
-          duration = 6000 + Math.random() * 4000;
-          offset = 0;
-        }
-
-        const c0 = colors[index];
-        const c1 = colors[(index + 1) % colors.length];
-        const c2 = colors[(index + 2) % colors.length];
-        const g1 = mix(c0, c1, t);
-        const g2 = mix(c1, c2, t);
-        const angle = angleStart + (angleEnd - angleStart) * t;
-        tile.style.background = `linear-gradient(${angle}deg, ${rgbString(g1)}, ${rgbString(g2)})`;
-        requestAnimationFrame(frame);
-      };
-
-      requestAnimationFrame(frame);
+    // Randomize tile animations
+    document.querySelectorAll('.bg-tiles .tile').forEach(tile => {
+      tile.style.setProperty('--angle', Math.random() * 360 + 'deg');
+      tile.style.animationDelay = `${-Math.random() * 20}s, ${-Math.random() * 40}s`;
     });
 
-    updateColors();
-
+    // Theme toggle
     const toggle = document.getElementById('theme-toggle');
     toggle.addEventListener('change', () => {
       document.body.classList.toggle('dark', toggle.checked);
-      updateColors();
     });
   </script>
 </body>
