@@ -84,6 +84,16 @@
       transform-origin: left top;
       transform: scale(1.3);
       filter: drop-shadow(0 3px 4px rgba(0,0,0,0.25));
+      cursor: pointer;
+      transition: transform 150ms ease;
+    }
+    .nav-logo:hover { transform: scale(1.35); }
+    .nav-logo.quake { animation: quake 0.6s; }
+    @keyframes quake {
+      0%,100% { transform: scale(1.35) translateX(0); }
+      25% { transform: scale(1.35) translateX(-10px); }
+      50% { transform: scale(1.35) translateX(10px); }
+      75% { transform: scale(1.35) translateX(-10px); }
     }
     body.dark .nav-logo { filter: drop-shadow(0 3px 4px rgba(255,255,255,0.2)); }
     .nav a {
@@ -92,6 +102,7 @@
       transform: translate(25px, 48px);
     }
     .nav a:hover { background: rgba(189,175,154,0.22); }
+    .nav a.our-way { font-style: italic; }
     .nav .spacer { flex: 1; }
     .theme-switch { position: relative; display: inline-block; width: 60px; height: 30px; transform: translate(25px, 48px); }
     .theme-switch input { opacity: 0; width: 0; height: 0; }
@@ -196,12 +207,39 @@
     .bg-tiles .tile:nth-child(7n+6) { background-color: var(--tile6); animation-delay: -5s; }
     .bg-tiles .tile:nth-child(7n)   { background-color: var(--tile7); animation-delay: -6s; }
 
-    @keyframes tileShift {
-      0%,100% { opacity: 0; transform: translateY(20px); }
-      20%,80% { opacity: 1; transform: translateY(0); }
+@keyframes tileShift {
+  0%,100% { opacity: 0; transform: translateY(20px); }
+  20%,80% { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 980px) {
+  .bg-tiles { display: none; }
+}
+
+    .click-ripple {
+      position: fixed;
+      pointer-events: none;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      animation: rippleExpand 2.5s ease-out forwards;
+      z-index: 999;
     }
-    @media (max-width: 980px) {
-      .bg-tiles { display: none; }
+    @keyframes rippleExpand {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+      20% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      80% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+    .rock {
+      position: fixed;
+      width: 6px; height: 6px;
+      background: #8b5e3c;
+      border-radius: 1px;
+      pointer-events: none;
+      animation: rock-fall 0.6s forwards;
+      z-index: 999;
+    }
+    @keyframes rock-fall {
+      to { transform: translateY(25px); opacity: 0; }
     }
 
 
@@ -215,10 +253,11 @@
     <header>
       <nav class="nav" aria-label="Primary">
         <img class="nav-logo" src="logo.png" alt="Try Khmer logo" />
-        <a href="#learn">Learn</a>
-        <a href="#culture">Culture</a>
-        <a href="#workshops">Workshops</a>
-        <a href="#membership">Membership</a>
+          <a href="#learn">Learn</a>
+          <a href="#classes">Classes</a>
+          <a href="#our-way" class="our-way">Our Way</a>
+          <a href="#meetups">Meetups</a>
+          <a href="#join">Join Our Team</a>
         <span class="spacer"></span>
         <label class="theme-switch" aria-label="Toggle light and dark mode">
           <input type="checkbox" id="theme-toggle" />
@@ -268,16 +307,46 @@
 
     <!-- Quiet footer -->
     <footer>
-      © <span id="y"></span> Try Khmer. Thoughtfully minimal by design.
+      © <span id="y"></span> Try Khmer
     </footer>
   </div>
 
-  <script>
-    document.getElementById('y').textContent = new Date().getFullYear();
-    const toggle = document.getElementById('theme-toggle');
-    toggle.addEventListener('change', () => {
-      document.body.classList.toggle('dark', toggle.checked);
-    });
-  </script>
-</body>
-</html>
+    <script>
+      document.getElementById('y').textContent = new Date().getFullYear();
+      const toggle = document.getElementById('theme-toggle');
+      toggle.addEventListener('change', () => {
+        document.body.classList.toggle('dark', toggle.checked);
+      });
+
+      document.querySelectorAll('.nav a').forEach(link => {
+        link.addEventListener('click', e => {
+          const color = getComputedStyle(link).color;
+          const ripple = document.createElement('span');
+          ripple.className = 'click-ripple';
+          ripple.style.background = color;
+          ripple.style.left = `${e.clientX}px`;
+          ripple.style.top = `${e.clientY}px`;
+          const size = Math.max(window.innerWidth, window.innerHeight) * 2;
+          ripple.style.width = ripple.style.height = `${size}px`;
+          document.body.appendChild(ripple);
+          ripple.addEventListener('animationend', () => ripple.remove());
+        });
+      });
+
+      const logo = document.querySelector('.nav-logo');
+      logo.addEventListener('click', () => {
+        logo.classList.add('quake');
+        const rect = logo.getBoundingClientRect();
+        for (let i = 0; i < 6; i++) {
+          const rock = document.createElement('span');
+          rock.className = 'rock';
+          rock.style.left = rect.left + rect.width / 2 + (Math.random() - 0.5) * rect.width + 'px';
+          rock.style.top = rect.bottom + 'px';
+          document.body.appendChild(rock);
+          rock.addEventListener('animationend', () => rock.remove());
+        }
+        setTimeout(() => logo.classList.remove('quake'), 600);
+      });
+    </script>
+  </body>
+  </html>
