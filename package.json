@@ -1,0 +1,13 @@
+{
+  "name": "ineedtoread",
+  "version": "1.0.0",
+  "description": "Placeholder package for TryKhmer project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No npm tests configured\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
