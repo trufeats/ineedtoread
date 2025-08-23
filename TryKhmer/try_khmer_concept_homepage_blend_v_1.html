@@ -174,15 +174,25 @@
       inherits: false;
       initial-value: 0deg;
     }
-    @keyframes tileShift {
-      0%   { background: linear-gradient(var(--angle), var(--tile1), var(--tile2)); }
-      14.285% { background: linear-gradient(var(--angle), var(--tile2), var(--tile3)); }
-      28.571% { background: linear-gradient(var(--angle), var(--tile3), var(--tile4)); }
-      42.857% { background: linear-gradient(var(--angle), var(--tile4), var(--tile5)); }
-      57.142% { background: linear-gradient(var(--angle), var(--tile5), var(--tile6)); }
-      71.428% { background: linear-gradient(var(--angle), var(--tile6), var(--tile7)); }
-      85.714% { background: linear-gradient(var(--angle), var(--tile7), var(--tile1)); }
-      100% { background: linear-gradient(var(--angle), var(--tile1), var(--tile2)); }
+    @property --c1 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: #f4f2ea;
+    }
+    @property --c2 {
+      syntax: '<color>';
+      inherits: false;
+      initial-value: #f5f0e4;
+    }
+    @keyframes tileColors {
+      0%   { --c1: var(--tile1); --c2: var(--tile2); }
+      14.285% { --c1: var(--tile2); --c2: var(--tile3); }
+      28.571% { --c1: var(--tile3); --c2: var(--tile4); }
+      42.857% { --c1: var(--tile4); --c2: var(--tile5); }
+      57.142% { --c1: var(--tile5); --c2: var(--tile6); }
+      71.428% { --c1: var(--tile6); --c2: var(--tile7); }
+      85.714% { --c1: var(--tile7); --c2: var(--tile1); }
+      100% { --c1: var(--tile1); --c2: var(--tile2); }
     }
     @keyframes rotate {
       to { --angle: 360deg; }
@@ -199,8 +209,10 @@
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
-      background: var(--tile1);
-      animation: tileShift 80s linear infinite, rotate 160s linear infinite;
+      --c1: var(--tile1);
+      --c2: var(--tile2);
+      background: linear-gradient(var(--angle), var(--c1), var(--c2));
+      animation: tileColors 80s linear infinite both, rotate 160s linear infinite both;
     }
     body.dark .bg-tiles .tile {
       box-shadow: inset 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.4);
