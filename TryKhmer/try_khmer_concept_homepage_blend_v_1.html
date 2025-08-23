@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Try Khmer — Concept Homepage (Blend of 3 refs)</title>
+  <style>
+    /* =============================
+       Design system (from your refs)
+       - Screenshot 1: color scheme only
+       - Screenshot 2: logo inside elevated speech bubble
+       - Screenshot 3: layout, header, button placement/options, page background
+    ============================== */
+    :root {
+      /* Warm, premium neutrals inspired by Screenshot 1 */
+      --bg: #F6F1E8;           /* page background (Screenshot 3) */
+      --card: #EEE6DA;         /* speech bubble fill (slightly deeper than bg) */
+      --tile: #F1EADF;        /* off‑white background tiles (Screenshot 3) */
+      --ink: #5A4A39;          /* primary text */
+      --ink-soft: #7C6A56;     /* muted text */
+      --line: #BDAF9A;         /* subtle borders/outlines */
+      --cta: #6E5B3F;          /* filled button */
+      --cta-ink: #FFF9F0;      /* text on filled button */
+      --btn-hover: #5F4F38;    /* filled button hover */
+      --focus: #8E7A59;        /* focus ring */
+      --shadow: 0 18px 40px rgba(51, 38, 22, 0.18), 0 2px 6px rgba(51, 38, 22, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.35; letter-spacing: 0.01em;
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 28px 80px; }
+
+    /* Header (from Screenshot 3) */
+    header { position: sticky; top: 0; z-index: 10; backdrop-filter: saturate(1.1) blur(2px); }
+    .nav {
+      display: flex; align-items: center; justify-content: center; gap: 36px;
+      padding: 10px 0 18px; border-bottom: 1px solid rgba(189,175,154,0.35);
+    }
+    .nav a {
+      color: var(--ink); text-decoration: none; font-weight: 520; opacity: 0.9;
+      padding: 10px 8px; border-radius: 12px; transition: 150ms ease;
+    }
+    .nav a:hover { background: rgba(189,175,154,0.22); }
+    .nav .spacer { flex: 1; }
+    .nav .login { margin-left: auto; }
+
+    /* Hero Layout (from Screenshot 3) */
+    .hero {
+      display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center;
+      padding-top: 46px; padding-bottom: 40px;
+      position: relative; /* needed to anchor the right-side tiles */
+    }
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; gap: 32px; }
+    }
+
+    .headline h1 {
+      font-size: clamp(36px, 5vw, 72px);
+      line-height: 1.05; margin: 0 0 18px; letter-spacing: -0.02em;
+    }
+    .headline p { margin: 0 0 28px; font-size: clamp(16px, 2.1vw, 20px); color: var(--ink-soft); }
+
+    /* Buttons (from Screenshot 3: placement & options) */
+    .cta-row { display: flex; gap: 18px; flex-wrap: wrap; width: 61.8vw; max-width: 740px; }
+    @media (max-width: 980px) { .cta-row { width: 100%; max-width: none; } }
+    .btn {
+      --pad-x: 28px; --pad-y: 16px;
+      appearance: none; border: 1.5px solid var(--line); background: transparent; color: var(--ink);
+      padding: var(--pad-y) var(--pad-x); border-radius: 14px; font-weight: 600; letter-spacing: 0.02em; font-size: 18px;
+      cursor: pointer; transition: transform 120ms ease, background 160ms ease, border-color 160ms ease, box-shadow 150ms ease;
+      flex: 1 1 320px;
+    }
+    .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(142,122,89,0.3); border-color: var(--focus); }
+    .btn:hover { background: rgba(189,175,154,0.22); }
+
+    .btn.primary { background: var(--cta); color: var(--cta-ink); border-color: var(--cta); }
+    .btn.primary:hover { background: var(--btn-hover); transform: translateY(-1px); }
+
+    /* Speech bubble with logo inside (from Screenshot 2) */
+    .bubble {
+      position: relative; background: var(--card); border-radius: 32px; padding: 48px 42px; filter: drop-shadow(0 22px 30px rgba(51,38,22,.18));
+      box-shadow: var(--shadow);
+      min-height: 260px; display: grid; place-items: center; overflow: visible; isolation: isolate;
+      z-index: 1; /* ensure it sits above background tiles */
+    }
+    /* Tail */
+    .bubble::after {
+      content: ""; position: absolute; right: 12%; bottom: -28px; width: 140px; height: 70px;
+      background: var(--card); clip-path: polygon(0 0, 100% 0, 68% 100%);
+      filter: drop-shadow(0 16px 22px rgba(51,38,22,.14));
+    }
+
+    /* Right-side off-white background boxes (from Screenshot 3) */
+    .bg-tiles {
+      position: absolute; right: -40px; top: -10px;
+      width: min(38vw, 520px); height: min(56vh, 620px);
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 18px; padding: 6px;
+      pointer-events: none; opacity: 0.55; z-index: 0;
+    }
+    .bg-tiles .tile {
+      background: var(--tile); border-radius: 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
+    }
+    @media (max-width: 980px) {
+      .bg-tiles { display: none; }
+    }
+
+    /* Logo placeholder area (drop in your real PNG/SVG) */
+    .logo-slot { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .logo-slot .logo-img { width: min(460px, 90%); height: auto; display: block; }
+    .logo-wordmark {
+      font-weight: 900; font-size: clamp(28px, 4.4vw, 54px); letter-spacing: 0.02em;
+      /* Subtle inset style reminiscent of your 3D tile logo without recreating it */
+      color: var(--ink); padding: 8px 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(0,0,0,0.04));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -4px 10px rgba(0,0,0,0.08);
+    }
+    .sprout { width: 26px; height: 26px; display: inline-block; }
+
+    /* Footer (quiet) */
+    footer { margin-top: 80px; padding-top: 24px; border-top: 1px solid rgba(189,175,154,0.35); color: var(--ink-soft); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Header / Nav (Screenshot 3) -->
+    <header>
+      <nav class="nav" aria-label="Primary">
+        <a href="#learn">Learn</a>
+        <a href="#culture">Culture</a>
+        <a href="#workshops">Workshops</a>
+        <a href="#membership">Membership</a>
+        <span class="spacer"></span>
+        <a class="login" href="#login" aria-label="Log in">Login</a>
+      </nav>
+    </header>
+
+    <!-- Hero (layout from 3, speech bubble & logo from 2, colors from 1) -->
+    <section class="hero">
+      <div class="bg-tiles" aria-hidden="true">
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+        <div class="tile"></div>
+      </div>
+      <div class="headline">
+        <h1>Learn Khmer,<br/>unlock adventure</h1>
+        <p>Creative, culture-first lessons that make the language click.</p>
+        <div class="cta-row">
+          <button class="btn primary">Start Learning</button>
+          <button class="btn">Explore Culture</button>
+        </div>
+      </div>
+
+      <div class="bubble" aria-label="Brand mark inside a speech bubble">
+        <div class="logo-slot">
+          <img class="logo-img" src="/mnt/data/logo.png" alt="Try Khmer logo" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Quiet footer -->
+    <footer>
+      © <span id="y"></span> Try Khmer. Thoughtfully minimal by design.
+    </footer>
+  </div>
+
+  <script>
+    // Year stamp
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
