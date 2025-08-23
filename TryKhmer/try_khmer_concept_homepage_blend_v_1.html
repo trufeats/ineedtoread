@@ -70,20 +70,22 @@
       transform: scale(1.3);
       filter: drop-shadow(0 3px 4px rgba(0,0,0,0.25));
     }
+    body.dark .nav-logo { filter: drop-shadow(0 3px 4px rgba(255,255,255,0.35)); }
     .nav a {
       color: var(--ink); text-decoration: none; font-weight: 520; opacity: 0.9;
       padding: 10px 8px; border-radius: 12px; transition: 150ms ease;
-      transform: translate(10px, 48px);
+      transform: translate(25px, 48px);
     }
     .nav a:hover { background: rgba(189,175,154,0.22); }
     .nav .spacer { flex: 1; }
-    .theme-switch { position: relative; display: inline-block; width: 60px; height: 30px; transform: translate(10px, 48px); }
+    .theme-switch { position: relative; display: inline-block; width: 60px; height: 30px; transform: translate(25px, 48px); }
     .theme-switch input { opacity: 0; width: 0; height: 0; }
     .theme-switch .slider {
       position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
       background: #e5d5c1; border-radius: 30px; transition: background 0.4s;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
     }
+    body.dark .theme-switch .slider { box-shadow: 0 2px 6px rgba(255,255,255,0.4); }
     .theme-switch .slider:before {
       position: absolute; content: ""; height: 24px; width: 24px; left: 3px; bottom: 3px;
       background: #f8f7f1; transition: transform 0.4s; border-radius: 50%;
@@ -143,13 +145,14 @@
 
     /* Hero logo image replaces previous CSS bubble */
     .hero-logo {
-      width: min(690px, 90%);
+      width: min(1035px, 135%);
       height: auto;
       justify-self: center;
       align-self: center;
       display: block;
       filter: drop-shadow(0 30px 45px rgba(0,0,0,0.55));
     }
+    body.dark .hero-logo { filter: drop-shadow(0 30px 45px rgba(255,255,255,0.45)); }
 
     /* Right-side off-white background boxes (from Screenshot 3) */
     .bg-tiles {
@@ -163,6 +166,9 @@
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
+    }
+    body.dark .bg-tiles .tile {
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.4);
     }
 
     .bg-tiles .shade1 { background: #f4f2ea; }
@@ -282,17 +288,18 @@
       let angleStart = Math.random() * 360;
       let angleEnd = angleStart + (Math.random() * 180 - 90);
       let duration = 6000 + Math.random() * 4000;
-      let start = performance.now() - Math.random() * duration;
+      let start = performance.now();
+      let offset = Math.random() * duration;
 
-      const step = now => {
-        let t = (now - start) / duration;
-        if (t >= 1) {
+      const frame = now => {
+        let t = ((now - start + offset) % duration) / duration;
+        if (now - start + offset >= duration) {
           index = (index + 1) % colors.length;
           angleStart = angleEnd;
           angleEnd = angleStart + (Math.random() * 180 - 90);
           start = now;
           duration = 6000 + Math.random() * 4000;
-          t = 0;
+          offset = 0;
         }
 
         const c0 = colors[index];
@@ -302,10 +309,10 @@
         const g2 = mix(c1, c2, t);
         const angle = angleStart + (angleEnd - angleStart) * t;
         tile.style.background = `linear-gradient(${angle}deg, ${rgbString(g1)}, ${rgbString(g2)})`;
-        requestAnimationFrame(step);
+        requestAnimationFrame(frame);
       };
 
-      step(performance.now());
+      requestAnimationFrame(frame);
     });
 
     updateColors();
