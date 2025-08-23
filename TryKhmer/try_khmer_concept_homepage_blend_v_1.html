@@ -100,14 +100,20 @@
     .bg-tiles {
       position: absolute; right: -40px; top: -10px;
       width: min(38vw, 520px); height: min(56vh, 620px);
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 18px; padding: 6px;
-      pointer-events: none; opacity: 0.55; z-index: 0;
+      pointer-events: none; opacity: 0.55; z-index: -1;
     }
     .bg-tiles .tile {
-      background: var(--tile); border-radius: 16px;
+      position: absolute; width: 90px; height: 90px;
+      border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
     }
+    .bg-tiles .tile:nth-child(1) { background: #f4f2ea; top: 0; left: 0; }
+    .bg-tiles .tile:nth-child(2) { background: #f5f0e4; top: 90px; left: 20px; }
+    .bg-tiles .tile:nth-child(3) { background: #ece5d5; top: 0; left: 110px; }
+    .bg-tiles .tile:nth-child(4) { background: #e5d5c1; top: 130px; left: 120px; }
+    .bg-tiles .tile:nth-child(5) { background: #ded1b7; top: 40px; left: 220px; }
+    .bg-tiles .tile:nth-child(6) { background: #d9c5aa; top: 180px; left: 240px; }
+    .bg-tiles .tile:nth-child(7) { background: #cdbca2; top: 70px; left: 330px; }
     @media (max-width: 980px) {
       .bg-tiles { display: none; }
     }
@@ -144,11 +150,6 @@
     <!-- Hero (layout from 3, speech bubble & logo from 2, colors from 1) -->
     <section class="hero">
       <div class="bg-tiles" aria-hidden="true">
-        <div class="tile"></div>
-        <div class="tile"></div>
-        <div class="tile"></div>
-        <div class="tile"></div>
-        <div class="tile"></div>
         <div class="tile"></div>
         <div class="tile"></div>
         <div class="tile"></div>
