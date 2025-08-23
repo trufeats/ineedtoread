@@ -1,6 +1,7 @@
-document.addEventListener('DOMContentLoaded', () => {
+function init() {
   // Year stamp
-  document.getElementById('y').textContent = new Date().getFullYear();
+  const yearEl = document.getElementById('y');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
 
   const tiles = document.querySelectorAll('.bg-tiles .tile');
 
@@ -72,6 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(step);
   }
 
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      last = null;
+    }
+  });
+
   requestAnimationFrame(step);
 
   // Theme toggle
@@ -82,5 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
       palette = getPalette();
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
