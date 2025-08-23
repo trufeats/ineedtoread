@@ -14,7 +14,7 @@
     :root {
       /* Warm, premium neutrals inspired by Screenshot 1 */
       --bg: #f8f7f1;           /* page background */
-      --card: #EEE6DA;         /* speech bubble fill (slightly deeper than bg) */
+      --card: #EEE6DA;         /* speech bubble fill (legacy) */
       --tile: #F1EADF;        /* off‑white background tiles */
       --ink: #594a39;          /* heading / primary text */
       --ink-soft: #826d4f;     /* body text */
@@ -44,6 +44,7 @@
       display: flex; align-items: center; justify-content: flex-start; gap: 36px;
       padding: 10px 0 18px; border-bottom: 1px solid rgba(189,175,154,0.35);
     }
+    .nav-logo { width: 120px; height: auto; display: block; }
     .nav a {
       color: var(--ink); text-decoration: none; font-weight: 520; opacity: 0.9;
       padding: 10px 8px; border-radius: 12px; transition: 150ms ease;
@@ -88,18 +89,13 @@
     .btn.alt { background: var(--bg); color: var(--ink); border-color: var(--ink); }
     .btn.alt:hover { background: var(--bg); }
 
-    /* Speech bubble with logo inside (from Screenshot 2) */
-    .bubble {
-      position: relative; background: var(--card); border-radius: 32px; padding: 48px 42px; filter: drop-shadow(0 22px 30px rgba(51,38,22,.18));
-      box-shadow: var(--shadow);
-      min-height: 260px; display: grid; place-items: center; overflow: visible; isolation: isolate;
-      z-index: 1; /* ensure it sits above background tiles */
-    }
-    /* Tail */
-    .bubble::after {
-      content: ""; position: absolute; right: 12%; bottom: -28px; width: 140px; height: 70px;
-      background: var(--card); clip-path: polygon(0 0, 100% 0, 68% 100%);
-      filter: drop-shadow(0 16px 22px rgba(51,38,22,.14));
+    /* Hero logo image replaces previous CSS bubble */
+    .hero-logo {
+      width: min(460px, 90%);
+      height: auto;
+      justify-self: center;
+      align-self: center;
+      display: block;
     }
 
     /* Right-side off-white background boxes (from Screenshot 3) */
@@ -111,31 +107,36 @@
       gap: 12px;
       pointer-events: none; opacity: 0.55; z-index: -1;
     }
+    @keyframes tileShift {
+      0%,100% { background: linear-gradient(0deg, #f4f2ea, #f5f0e4); }
+      14% { background: linear-gradient(45deg, #f5f0e4, #ece5d5); }
+      28% { background: linear-gradient(90deg, #ece5d5, #e5d5c1); }
+      42% { background: linear-gradient(135deg, #e5d5c1, #ded1b7); }
+      56% { background: linear-gradient(180deg, #ded1b7, #d9c5aa); }
+      70% { background: linear-gradient(225deg, #d9c5aa, #cdbca2); }
+      84% { background: linear-gradient(270deg, #cdbca2, #f4f2ea); }
+    }
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
+      background-size: 200% 200%;
+      animation: tileShift 60s ease-in-out infinite;
     }
-    .bg-tiles .shade1 { background: #f4f2ea; }
-    .bg-tiles .shade2 { background: #f5f0e4; }
-    .bg-tiles .shade3 { background: #ece5d5; }
-    .bg-tiles .shade4 { background: #e5d5c1; }
-    .bg-tiles .shade5 { background: #ded1b7; }
-    .bg-tiles .shade6 { background: #d9c5aa; }
-    .bg-tiles .shade7 { background: #cdbca2; }
+    .bg-tiles .tile:nth-child(odd) { animation-duration: 80s; }
+    .bg-tiles .tile:nth-child(3n) { animation-duration: 90s; }
+    .bg-tiles .tile:nth-child(4n) { animation-duration: 70s; animation-direction: reverse; }
+
+    .bg-tiles .shade1 { background: #f4f2ea; animation-delay: -0s; }
+    .bg-tiles .shade2 { background: #f5f0e4; animation-delay: -8s; }
+    .bg-tiles .shade3 { background: #ece5d5; animation-delay: -16s; }
+    .bg-tiles .shade4 { background: #e5d5c1; animation-delay: -24s; }
+    .bg-tiles .shade5 { background: #ded1b7; animation-delay: -32s; }
+    .bg-tiles .shade6 { background: #d9c5aa; animation-delay: -40s; }
+    .bg-tiles .shade7 { background: #cdbca2; animation-delay: -48s; }
     @media (max-width: 980px) {
       .bg-tiles { display: none; }
     }
 
-    /* Logo placeholder area (drop in your real PNG/SVG) */
-    .logo-slot { display: flex; align-items: center; justify-content: center; gap: 14px; }
-    .logo-slot .logo-img { width: min(460px, 90%); height: auto; display: block; }
-    .logo-wordmark {
-      font-weight: 900; font-size: clamp(28px, 4.4vw, 54px); letter-spacing: 0.02em;
-      /* Subtle inset style reminiscent of your 3D tile logo without recreating it */
-      color: var(--ink); padding: 8px 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,255,255,0.35), rgba(0,0,0,0.04));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -4px 10px rgba(0,0,0,0.08);
-    }
-    .sprout { width: 26px; height: 26px; display: inline-block; }
 
     /* Footer (quiet) */
     footer { margin-top: 80px; padding-top: 24px; border-top: 1px solid rgba(189,175,154,0.35); color: var(--ink-soft); font-size: 14px; }
@@ -146,6 +147,7 @@
     <!-- Header / Nav (Screenshot 3) -->
     <header>
       <nav class="nav" aria-label="Primary">
+        <img class="nav-logo" src="logo-bubble.png" alt="Try Khmer logo" />
         <a href="#learn">Learn</a>
         <a href="#culture">Culture</a>
         <a href="#workshops">Workshops</a>
@@ -191,11 +193,7 @@
         </div>
       </div>
 
-      <div class="bubble" aria-label="Brand mark inside a speech bubble">
-        <div class="logo-slot">
-          <img class="logo-img" src="logo.png" alt="Try Khmer logo" />
-        </div>
-      </div>
+      <img class="hero-logo" src="logo-bubble.png" alt="Try Khmer logo inside a speech bubble" />
     </section>
 
     <!-- Quiet footer -->
