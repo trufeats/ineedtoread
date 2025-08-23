@@ -169,35 +169,6 @@
     body.dark .hero-logo { filter: drop-shadow(0 30px 45px rgba(255,255,255,0.45)); }
 
     /* Right-side off-white background boxes (from Screenshot 3) */
-    @property --angle {
-      syntax: '<angle>';
-      inherits: false;
-      initial-value: 0deg;
-    }
-    @property --c1 {
-      syntax: '<color>';
-      inherits: false;
-      initial-value: #f4f2ea;
-    }
-    @property --c2 {
-      syntax: '<color>';
-      inherits: false;
-      initial-value: #f5f0e4;
-    }
-    @keyframes tileColors {
-      0%   { --c1: var(--tile1); --c2: var(--tile2); }
-      14.285% { --c1: var(--tile2); --c2: var(--tile3); }
-      28.571% { --c1: var(--tile3); --c2: var(--tile4); }
-      42.857% { --c1: var(--tile4); --c2: var(--tile5); }
-      57.142% { --c1: var(--tile5); --c2: var(--tile6); }
-      71.428% { --c1: var(--tile6); --c2: var(--tile7); }
-      85.714% { --c1: var(--tile7); --c2: var(--tile1); }
-      100% { --c1: var(--tile1); --c2: var(--tile2); }
-    }
-    @keyframes rotate {
-      to { --angle: 360deg; }
-    }
-
     .bg-tiles {
       position: absolute; right: -21px; top: -542px;
       display: grid;
@@ -209,10 +180,7 @@
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
-      --c1: var(--tile1);
-      --c2: var(--tile2);
-      background: linear-gradient(var(--angle), var(--c1), var(--c2));
-      animation: tileColors 80s linear infinite both, rotate 160s linear infinite both;
+      background: linear-gradient(0deg, var(--tile1), var(--tile2));
     }
     body.dark .bg-tiles .tile {
       box-shadow: inset 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.4);
@@ -293,23 +261,83 @@
     // Year stamp
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Randomize tile animations and set initial colors
-    const palette = ['var(--tile1)','var(--tile2)','var(--tile3)','var(--tile4)','var(--tile5)','var(--tile6)','var(--tile7)'];
-    document.querySelectorAll('.bg-tiles .tile').forEach(tile => {
-      const colorProgress = Math.random();
-      const idx = Math.floor(colorProgress * palette.length);
-      const next = (idx + 1) % palette.length;
-      tile.style.setProperty('--c1', palette[idx]);
-      tile.style.setProperty('--c2', palette[next]);
-      const angleProgress = Math.random();
-      tile.style.setProperty('--angle', angleProgress * 360 + 'deg');
-      tile.style.animationDelay = `${-colorProgress * 80}s, ${-angleProgress * 160}s`;
+    // --- Smooth tile gradient animation ---
+    const tiles = document.querySelectorAll('.bg-tiles .tile');
+
+    function getPalette() {
+      const s = getComputedStyle(document.body);
+      return [
+        s.getPropertyValue('--tile1'),
+        s.getPropertyValue('--tile2'),
+        s.getPropertyValue('--tile3'),
+        s.getPropertyValue('--tile4'),
+        s.getPropertyValue('--tile5'),
+        s.getPropertyValue('--tile6'),
+        s.getPropertyValue('--tile7')
+      ].map(c => c.trim());
+    }
+
+    let palette = getPalette();
+
+    function hexToRgb(hex) {
+      const h = hex.replace('#', '');
+      return {
+        r: parseInt(h.slice(0, 2), 16),
+        g: parseInt(h.slice(2, 4), 16),
+        b: parseInt(h.slice(4, 6), 16)
+      };
+    }
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function lerpColor(a, b, t) {
+      const ca = hexToRgb(a), cb = hexToRgb(b);
+      return `rgb(${Math.round(lerp(ca.r, cb.r, t))}, ${Math.round(lerp(ca.g, cb.g, t))}, ${Math.round(lerp(ca.b, cb.b, t))})`;
+    }
+
+    const states = Array.from(tiles).map(tile => {
+      const start = Math.floor(Math.random() * palette.length);
+      const next = (start + 1) % palette.length;
+      const progress = Math.random();
+      const angle = Math.random() * 360;
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      return { tile, c1: start, c2: next, progress, angle, dir, last: performance.now() };
     });
+
+    function updatePalette() {
+      palette = getPalette();
+    }
+
+    function render(time) {
+      states.forEach(s => {
+        const delta = time - s.last;
+        s.progress += delta / 80000; // 80s color cycle
+        if (s.progress >= 1) {
+          s.progress -= 1;
+          s.c1 = s.c2;
+          s.c2 = (s.c2 + 1) % palette.length;
+        }
+        s.angle = (s.angle + s.dir * delta * (360 / 160000)) % 360; // 160s rotation
+        const colorA = lerpColor(palette[s.c1], palette[s.c2], s.progress);
+        const colorB = lerpColor(palette[s.c2], palette[(s.c2 + 1) % palette.length], s.progress);
+        s.tile.style.background = `linear-gradient(${s.angle}deg, ${colorA}, ${colorB})`;
+        s.last = time;
+      });
+      requestAnimationFrame(render);
+    }
+
+    // Initialize styles then start animation
+    states.forEach(s => {
+      const colorA = lerpColor(palette[s.c1], palette[s.c2], s.progress);
+      const colorB = lerpColor(palette[s.c2], palette[(s.c2 + 1) % palette.length], s.progress);
+      s.tile.style.background = `linear-gradient(${s.angle}deg, ${colorA}, ${colorB})`;
+    });
+    requestAnimationFrame(render);
 
     // Theme toggle
     const toggle = document.getElementById('theme-toggle');
     toggle.addEventListener('change', () => {
       document.body.classList.toggle('dark', toggle.checked);
+      updatePalette();
     });
   </script>
 </body>
