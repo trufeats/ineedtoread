@@ -30,54 +30,45 @@ function init() {
 
   const states = Array.from(tiles, tile => {
     const index = Math.floor(Math.random() * palette.length);
-    const progress = Math.random();
-    const angle = Math.random() * 360;
-    const speed = 8000 + Math.random() * 8000; // ms per color blend
+    const speed = 6000 + Math.random() * 6000; // ms per color blend (slightly faster)
+    const start = performance.now() - Math.random() * speed; // begin in-progress
+    const angleOffset = Math.random() * 360;
     const rotSpeed = (Math.random() * 30 - 15) / 1000; // deg per ms
     const state = {
       el: tile,
       index,
       next: (index + 1) % palette.length,
-      nextNext: (index + 2) % palette.length,
-      progress,
+      start,
       speed,
-      angle,
+      angleOffset,
       rotSpeed,
     };
+    const progress = (performance.now() - start) / speed;
     const c1 = mix(palette[state.index], palette[state.next], progress);
-    const c2 = mix(palette[state.next], palette[state.nextNext], progress);
-    tile.style.background = `linear-gradient(${angle}deg, ${c1}, ${c2})`;
+    const c2 = mix(palette[state.next], palette[(state.next + 1) % palette.length], progress);
+    tile.style.background = `linear-gradient(${angleOffset}deg, ${c1}, ${c2})`;
     return state;
   });
 
-  let last;
-  function step(ts) {
-    if (!last) last = ts;
-    const dt = ts - last;
-    last = ts;
-
+  function step(now) {
     states.forEach(s => {
-      s.progress += dt / s.speed;
-      if (s.progress >= 1) {
-        s.index = s.next;
-        s.next = s.nextNext;
-        s.nextNext = (s.nextNext + 1) % palette.length;
-        s.progress -= 1;
+      let elapsed = now - s.start;
+      let progress = elapsed / s.speed;
+      if (progress >= 1) {
+        const shifts = Math.floor(progress);
+        s.index = (s.index + shifts) % palette.length;
+        s.next = (s.index + 1) % palette.length;
+        s.start += s.speed * shifts;
+        progress -= shifts;
       }
-      s.angle = (s.angle + s.rotSpeed * dt) % 360;
-      const c1 = mix(palette[s.index], palette[s.next], s.progress);
-      const c2 = mix(palette[s.next], palette[s.nextNext], s.progress);
-      s.el.style.background = `linear-gradient(${s.angle}deg, ${c1}, ${c2})`;
+      const c1 = mix(palette[s.index], palette[s.next], progress);
+      const c2 = mix(palette[s.next], palette[(s.next + 1) % palette.length], progress);
+      const angle = (s.angleOffset + now * s.rotSpeed) % 360;
+      s.el.style.background = `linear-gradient(${angle}deg, ${c1}, ${c2})`;
     });
 
     requestAnimationFrame(step);
   }
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      last = null;
-    }
-  });
 
   requestAnimationFrame(step);
 
