@@ -11,11 +11,19 @@
        - Screenshot 2: logo inside elevated speech bubble
        - Screenshot 3: layout, header, button placement/options, page background
     ============================== */
+
     :root {
       /* Warm, premium neutrals inspired by Screenshot 1 */
       --bg: #f8f7f1;           /* page background */
       --card: #EEE6DA;         /* speech bubble fill (legacy) */
       --tile: #F1EADF;        /* off‑white background tiles */
+      --tile1: #f4f2ea;
+      --tile2: #f5f0e4;
+      --tile3: #ece5d5;
+      --tile4: #e5d5c1;
+      --tile5: #ded1b7;
+      --tile6: #d9c5aa;
+      --tile7: #cdbca2;
       --ink: #594a39;          /* heading / primary text */
       --ink-soft: #826d4f;     /* body text */
       --line: #BDAF9A;         /* subtle borders/outlines */
@@ -24,6 +32,26 @@
       --btn-hover: #4d3f30;    /* filled button hover */
       --focus: #8E7A59;        /* focus ring */
       --shadow: 0 18px 40px rgba(51, 38, 22, 0.18), 0 2px 6px rgba(51, 38, 22, 0.06);
+    }
+
+    body.dark {
+      --bg: #2b251b;
+      --card: #3a2f24;
+      --tile: #463a2d;
+      --tile1: #4a3c2f;
+      --tile2: #433527;
+      --tile3: #3c2f23;
+      --tile4: #34271b;
+      --tile5: #2d2116;
+      --tile6: #261b10;
+      --tile7: #20170c;
+      --ink: #f4f2ea;
+      --ink-soft: #ded1b7;
+      --line: #8a7b66;
+      --cta: #cdbca2;
+      --cta-ink: #2b251b;
+      --btn-hover: #bda98f;
+      --focus: #cdbca2;
     }
 
     * { box-sizing: border-box; }
@@ -36,6 +64,11 @@
       line-height: 1.35; letter-spacing: 0.01em;
     }
 
+    body.dark {
+      background: linear-gradient(to right, #3a2f24 0%, var(--bg) 38.2%, var(--bg) 100%);
+      color: var(--ink-soft);
+    }
+
     .wrap { max-width: 1200px; margin: 0; padding: 24px 16px 80px 50px; }
 
     /* Header (from Screenshot 3) */
@@ -44,14 +77,52 @@
       display: flex; align-items: center; justify-content: flex-start; gap: 36px;
       padding: 10px 0 18px; border-bottom: 1px solid rgba(189,175,154,0.35);
     }
-    .nav-logo { width: 120px; height: auto; display: block; }
+    .nav-logo {
+      width: 120px;
+      height: auto;
+      display: block;
+      transform-origin: left top;
+      transform: scale(1.3);
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,0.25));
+      cursor: pointer;
+      transition: transform 150ms ease;
+    }
+    .nav-logo:hover { transform: scale(1.35); }
+    .nav-logo.quake { animation: quake 0.6s; }
+    @keyframes quake {
+      0%,100% { transform: scale(1.35) translateX(0); }
+      25% { transform: scale(1.35) translateX(-10px); }
+      50% { transform: scale(1.35) translateX(10px); }
+      75% { transform: scale(1.35) translateX(-10px); }
+    }
+    body.dark .nav-logo { filter: drop-shadow(0 3px 4px rgba(255,255,255,0.2)); }
     .nav a {
       color: var(--ink); text-decoration: none; font-weight: 520; opacity: 0.9;
       padding: 10px 8px; border-radius: 12px; transition: 150ms ease;
+      transform: translate(25px, 48px);
     }
     .nav a:hover { background: rgba(189,175,154,0.22); }
+    .nav a.our-way { font-style: italic; }
     .nav .spacer { flex: 1; }
-    .nav .login { margin-left: auto; }
+    .theme-switch { position: relative; display: inline-block; width: 60px; height: 30px; transform: translate(25px, 48px); }
+    .theme-switch input { opacity: 0; width: 0; height: 0; }
+    .theme-switch .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background: #e5d5c1; border-radius: 30px; transition: background 0.4s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    body.dark .theme-switch .slider { box-shadow: 0 2px 6px rgba(255,255,255,0.4); }
+    .theme-switch .slider:before {
+      position: absolute; content: ""; height: 24px; width: 24px; left: 3px; bottom: 3px;
+      background: #f8f7f1; transition: transform 0.4s; border-radius: 50%;
+    }
+    .theme-switch input:checked + .slider {
+      background: #594a39;
+    }
+    .theme-switch input:checked + .slider:before {
+      transform: translateX(30px);
+      background: #cdbca2;
+    }
 
     /* Hero Layout (from Screenshot 3) */
     .hero {
@@ -79,6 +150,7 @@
       padding: var(--pad-y) var(--pad-x); border-radius: 14px; font-weight: 600; letter-spacing: 0.02em; font-size: 18px;
       cursor: pointer; transition: transform 120ms ease, background 160ms ease, border-color 160ms ease, box-shadow 150ms ease;
       flex: 1 1 320px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     }
     .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(142,122,89,0.3); border-color: var(--focus); }
     .btn:hover { background: rgba(189,175,154,0.22); }
@@ -89,14 +161,24 @@
     .btn.alt { background: var(--bg); color: var(--ink); border-color: var(--ink); }
     .btn.alt:hover { background: var(--bg); }
 
+    .explore-btn:hover {
+      animation: explore-bounce 0.4s ease-in-out;
+    }
+    @keyframes explore-bounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
     /* Hero logo image replaces previous CSS bubble */
     .hero-logo {
-      width: min(460px, 90%);
+      width: min(1035px, 135%);
       height: auto;
       justify-self: center;
       align-self: center;
       display: block;
+      filter: drop-shadow(0 30px 45px rgba(0,0,0,0.55));
     }
+    body.dark .hero-logo { filter: drop-shadow(0 30px 45px rgba(255,255,255,0.45)); }
 
     /* Right-side off-white background boxes (from Screenshot 3) */
     .bg-tiles {
@@ -110,18 +192,54 @@
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
-      transition: background 6s ease;
+      opacity: 0;
+      animation: tileShift 8s linear infinite;
+    }
+    body.dark .bg-tiles .tile {
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.4);
     }
 
-    .bg-tiles .shade1 { background: #f4f2ea; }
-    .bg-tiles .shade2 { background: #f5f0e4; }
-    .bg-tiles .shade3 { background: #ece5d5; }
-    .bg-tiles .shade4 { background: #e5d5c1; }
-    .bg-tiles .shade5 { background: #ded1b7; }
-    .bg-tiles .shade6 { background: #d9c5aa; }
-    .bg-tiles .shade7 { background: #cdbca2; }
-    @media (max-width: 980px) {
-      .bg-tiles { display: none; }
+    .bg-tiles .tile:nth-child(7n+1) { background-color: var(--tile1); animation-delay: -0s; }
+    .bg-tiles .tile:nth-child(7n+2) { background-color: var(--tile2); animation-delay: -1s; }
+    .bg-tiles .tile:nth-child(7n+3) { background-color: var(--tile3); animation-delay: -2s; }
+    .bg-tiles .tile:nth-child(7n+4) { background-color: var(--tile4); animation-delay: -3s; }
+    .bg-tiles .tile:nth-child(7n+5) { background-color: var(--tile5); animation-delay: -4s; }
+    .bg-tiles .tile:nth-child(7n+6) { background-color: var(--tile6); animation-delay: -5s; }
+    .bg-tiles .tile:nth-child(7n)   { background-color: var(--tile7); animation-delay: -6s; }
+
+@keyframes tileShift {
+  0%,100% { opacity: 0; transform: translateY(20px); }
+  20%,80% { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 980px) {
+  .bg-tiles { display: none; }
+}
+
+    .click-ripple {
+      position: fixed;
+      pointer-events: none;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      animation: rippleExpand 2.5s ease-out forwards;
+      z-index: 999;
+    }
+    @keyframes rippleExpand {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+      20% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      80% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+    .rock {
+      position: fixed;
+      width: 6px; height: 6px;
+      background: #8b5e3c;
+      border-radius: 1px;
+      pointer-events: none;
+      animation: rock-fall 0.6s forwards;
+      z-index: 999;
+    }
+    @keyframes rock-fall {
+      to { transform: translateY(67px); opacity: 0; }
     }
 
 
@@ -134,84 +252,105 @@
     <!-- Header / Nav (Screenshot 3) -->
     <header>
       <nav class="nav" aria-label="Primary">
-        <img class="nav-logo" src="logo-bubble.png" alt="Try Khmer logo" />
-        <a href="#learn">Learn</a>
-        <a href="#culture">Culture</a>
-        <a href="#workshops">Workshops</a>
-        <a href="#membership">Membership</a>
+        <img class="nav-logo" src="logo.png" alt="Try Khmer logo" />
+          <a href="#learn">Learn</a>
+          <a href="#classes">Classes</a>
+          <a href="#our-way" class="our-way">Our Way</a>
+          <a href="#meetups">Meetups</a>
+          <a href="#join">Join Our Team</a>
         <span class="spacer"></span>
-        <a class="login" href="#login" aria-label="Log in">Login</a>
+        <label class="theme-switch" aria-label="Toggle light and dark mode">
+          <input type="checkbox" id="theme-toggle" />
+          <span class="slider"></span>
+        </label>
       </nav>
     </header>
 
     <!-- Hero (layout from 3, speech bubble & logo from 2, colors from 1) -->
     <section class="hero">
       <div class="bg-tiles" aria-hidden="true">
-        <div class="tile shade7" style="grid-row:1;grid-column:7;"></div>
-        <div class="tile shade7" style="grid-row:2;grid-column:7;"></div>
-        <div class="tile shade6" style="grid-row:3;grid-column:6;"></div>
-        <div class="tile shade4" style="grid-row:4;grid-column:4;"></div>
-        <div class="tile shade5" style="grid-row:4;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:4;grid-column:6;"></div>
-        <div class="tile shade4" style="grid-row:5;grid-column:4;"></div>
-        <div class="tile shade5" style="grid-row:5;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:5;grid-column:6;"></div>
-        <div class="tile shade5" style="grid-row:6;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:6;grid-column:6;"></div>
-        <div class="tile shade7" style="grid-row:6;grid-column:7;"></div>
-        <div class="tile shade5" style="grid-row:7;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:7;grid-column:6;"></div>
-        <div class="tile shade4" style="grid-row:8;grid-column:4;"></div>
-        <div class="tile shade5" style="grid-row:8;grid-column:5;"></div>
-        <div class="tile shade6" style="grid-row:8;grid-column:6;"></div>
-        <div class="tile shade5" style="grid-row:9;grid-column:5;"></div>
-        <div class="tile shade7" style="grid-row:10;grid-column:7;"></div>
-        <div class="tile shade6" style="grid-row:11;grid-column:6;"></div>
-        <div class="tile shade7" style="grid-row:11;grid-column:7;"></div>
-        <div class="tile shade4" style="grid-row:12;grid-column:4;"></div>
-        <div class="tile shade6" style="grid-row:12;grid-column:6;"></div>
+        <div class="tile" style="grid-row:1;grid-column:7;"></div>
+        <div class="tile" style="grid-row:2;grid-column:7;"></div>
+        <div class="tile" style="grid-row:3;grid-column:6;"></div>
+        <div class="tile" style="grid-row:4;grid-column:4;"></div>
+        <div class="tile" style="grid-row:4;grid-column:5;"></div>
+        <div class="tile" style="grid-row:4;grid-column:6;"></div>
+        <div class="tile" style="grid-row:5;grid-column:4;"></div>
+        <div class="tile" style="grid-row:5;grid-column:5;"></div>
+        <div class="tile" style="grid-row:5;grid-column:6;"></div>
+        <div class="tile" style="grid-row:6;grid-column:5;"></div>
+        <div class="tile" style="grid-row:6;grid-column:6;"></div>
+        <div class="tile" style="grid-row:6;grid-column:7;"></div>
+        <div class="tile" style="grid-row:7;grid-column:5;"></div>
+        <div class="tile" style="grid-row:7;grid-column:6;"></div>
+        <div class="tile" style="grid-row:8;grid-column:4;"></div>
+        <div class="tile" style="grid-row:8;grid-column:5;"></div>
+        <div class="tile" style="grid-row:8;grid-column:6;"></div>
+        <div class="tile" style="grid-row:9;grid-column:5;"></div>
+        <div class="tile" style="grid-row:10;grid-column:7;"></div>
+        <div class="tile" style="grid-row:11;grid-column:6;"></div>
+        <div class="tile" style="grid-row:11;grid-column:7;"></div>
+        <div class="tile" style="grid-row:12;grid-column:4;"></div>
+        <div class="tile" style="grid-row:12;grid-column:6;"></div>
       </div>
       <div class="headline">
         <h1>Learn Khmer,<br/>unlock adventure</h1>
         <p>Creative, culture-first lessons that make the language click.</p>
         <div class="cta-row">
           <button class="btn primary">Start learning</button>
-          <button class="btn alt">Explore Culture</button>
+          <button class="btn alt explore-btn">Explore Culture</button>
         </div>
       </div>
 
-      <img class="hero-logo" src="logo-bubble.png" alt="Try Khmer logo inside a speech bubble" />
+      <img class="hero-logo" src="speech bubble logo.png" alt="Try Khmer logo inside a speech bubble" />
     </section>
 
     <!-- Quiet footer -->
     <footer>
-      © <span id="y"></span> Try Khmer. Thoughtfully minimal by design.
+      © <span id="y"></span> Try Khmer
     </footer>
   </div>
 
-  <script>
-    // Year stamp
-    document.getElementById('y').textContent = new Date().getFullYear();
+    <script>
+      document.getElementById('y').textContent = new Date().getFullYear();
+      const toggle = document.getElementById('theme-toggle');
+      toggle.addEventListener('change', () => {
+        document.body.classList.toggle('dark', toggle.checked);
+      });
 
-    // Smooth, asynchronous tile color shifts
-    const colors = ['#f4f2ea','#f5f0e4','#ece5d5','#e5d5c1','#ded1b7','#d9c5aa','#cdbca2'];
-    const tiles = document.querySelectorAll('.bg-tiles .tile');
+      document.querySelectorAll('.nav a').forEach(link => {
+        link.addEventListener('click', e => {
+          const color = getComputedStyle(link).color;
+          const ripple = document.createElement('span');
+          ripple.className = 'click-ripple';
+          ripple.style.background = color;
+          ripple.style.left = `${e.clientX}px`;
+          ripple.style.top = `${e.clientY}px`;
+          const size = Math.max(window.innerWidth, window.innerHeight) * 2;
+          ripple.style.width = ripple.style.height = `${size}px`;
+          document.body.appendChild(ripple);
+          ripple.addEventListener('animationend', () => ripple.remove());
+        });
+      });
 
-    tiles.forEach((tile, index) => {
-      let i1 = index % colors.length;
-      let i2 = (i1 + 1) % colors.length;
-
-      const update = () => {
-        const angle = Math.floor(Math.random() * 360);
-        tile.style.background = `linear-gradient(${angle}deg, ${colors[i1]}, ${colors[i2]})`;
-        i1 = (i1 + 1) % colors.length;
-        i2 = (i2 + 1) % colors.length;
-        const delay = 4000 + Math.random() * 4000;
-        setTimeout(update, delay);
-      };
-
-      setTimeout(update, index * 300);
-    });
-  </script>
-</body>
-</html>
+      const logo = document.querySelector('.nav-logo');
+      logo.addEventListener('click', () => {
+        logo.classList.add('quake');
+        const rect = logo.getBoundingClientRect();
+        for (let row = 0; row < 4; row++) {
+          setTimeout(() => {
+            for (let i = 0; i < 6; i++) {
+              const rock = document.createElement('span');
+              rock.className = 'rock';
+              rock.style.left = rect.left + rect.width / 2 + (Math.random() - 0.5) * rect.width + 'px';
+              rock.style.top = rect.bottom - 42 + 'px';
+              document.body.appendChild(rock);
+              rock.addEventListener('animationend', () => rock.remove());
+            }
+          }, row * 100);
+        }
+        setTimeout(() => logo.classList.remove('quake'), 600);
+      });
+    </script>
+  </body>
+  </html>
