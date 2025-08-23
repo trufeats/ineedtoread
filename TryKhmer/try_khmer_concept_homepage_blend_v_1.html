@@ -110,7 +110,6 @@
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
-      transition: background 6s ease;
     }
 
     .bg-tiles .shade1 { background: #f4f2ea; }
@@ -134,7 +133,7 @@
     <!-- Header / Nav (Screenshot 3) -->
     <header>
       <nav class="nav" aria-label="Primary">
-        <img class="nav-logo" src="logo-bubble.png" alt="Try Khmer logo" />
+        <img class="nav-logo" src="logo.png" alt="Try Khmer logo" />
         <a href="#learn">Learn</a>
         <a href="#culture">Culture</a>
         <a href="#workshops">Workshops</a>
@@ -180,7 +179,7 @@
         </div>
       </div>
 
-      <img class="hero-logo" src="logo-bubble.png" alt="Try Khmer logo inside a speech bubble" />
+      <img class="hero-logo" src="speech bubble logo.png" alt="Try Khmer logo inside a speech bubble" />
     </section>
 
     <!-- Quiet footer -->
@@ -193,24 +192,51 @@
     // Year stamp
     document.getElementById('y').textContent = new Date().getFullYear();
 
-    // Smooth, asynchronous tile color shifts
-    const colors = ['#f4f2ea','#f5f0e4','#ece5d5','#e5d5c1','#ded1b7','#d9c5aa','#cdbca2'];
+    // Helper functions for color interpolation
+    const hexToRgb = hex => {
+      const num = parseInt(hex.slice(1), 16);
+      return [num >> 16 & 255, num >> 8 & 255, num & 255];
+    };
+    const mix = (a, b, t) => [
+      a[0] + (b[0] - a[0]) * t,
+      a[1] + (b[1] - a[1]) * t,
+      a[2] + (b[2] - a[2]) * t
+    ];
+    const rgbString = c => `rgb(${c.map(v => Math.round(v)).join(',')})`;
+
+    const colors = ['#f4f2ea','#f5f0e4','#ece5d5','#e5d5c1','#ded1b7','#d9c5aa','#cdbca2'].map(hexToRgb);
     const tiles = document.querySelectorAll('.bg-tiles .tile');
 
-    tiles.forEach((tile, index) => {
-      let i1 = index % colors.length;
-      let i2 = (i1 + 1) % colors.length;
+    tiles.forEach(tile => {
+      let index = Math.floor(Math.random() * colors.length);
+      let angleStart = Math.random() * 360;
+      let angleEnd = angleStart + (Math.random() * 180 - 90);
+      let start = performance.now() + Math.random() * 4000;
+      let duration = 6000 + Math.random() * 4000;
 
-      const update = () => {
-        const angle = Math.floor(Math.random() * 360);
-        tile.style.background = `linear-gradient(${angle}deg, ${colors[i1]}, ${colors[i2]})`;
-        i1 = (i1 + 1) % colors.length;
-        i2 = (i2 + 1) % colors.length;
-        const delay = 4000 + Math.random() * 4000;
-        setTimeout(update, delay);
+      const step = now => {
+        if (now < start) { requestAnimationFrame(step); return; }
+        let t = (now - start) / duration;
+        if (t >= 1) {
+          index = (index + 1) % colors.length;
+          angleStart = angleEnd;
+          angleEnd = angleStart + (Math.random() * 180 - 90);
+          start = now;
+          duration = 6000 + Math.random() * 4000;
+          t = 0;
+        }
+
+        const c0 = colors[index];
+        const c1 = colors[(index + 1) % colors.length];
+        const c2 = colors[(index + 2) % colors.length];
+        const g1 = mix(c0, c1, t);
+        const g2 = mix(c1, c2, t);
+        const angle = angleStart + (angleEnd - angleStart) * t;
+        tile.style.background = `linear-gradient(${angle}deg, ${rgbString(g1)}, ${rgbString(g2)})`;
+        requestAnimationFrame(step);
       };
 
-      setTimeout(update, index * 300);
+      requestAnimationFrame(step);
     });
   </script>
 </body>
