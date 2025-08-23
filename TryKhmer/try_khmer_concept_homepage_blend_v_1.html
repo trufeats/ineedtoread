@@ -239,7 +239,7 @@
       z-index: 999;
     }
     @keyframes rock-fall {
-      to { transform: translateY(25px); opacity: 0; }
+      to { transform: translateY(67px); opacity: 0; }
     }
 
 
@@ -337,13 +337,17 @@
       logo.addEventListener('click', () => {
         logo.classList.add('quake');
         const rect = logo.getBoundingClientRect();
-        for (let i = 0; i < 6; i++) {
-          const rock = document.createElement('span');
-          rock.className = 'rock';
-          rock.style.left = rect.left + rect.width / 2 + (Math.random() - 0.5) * rect.width + 'px';
-          rock.style.top = rect.bottom + 'px';
-          document.body.appendChild(rock);
-          rock.addEventListener('animationend', () => rock.remove());
+        for (let row = 0; row < 4; row++) {
+          setTimeout(() => {
+            for (let i = 0; i < 6; i++) {
+              const rock = document.createElement('span');
+              rock.className = 'rock';
+              rock.style.left = rect.left + rect.width / 2 + (Math.random() - 0.5) * rect.width + 'px';
+              rock.style.top = rect.bottom - 42 + 'px';
+              document.body.appendChild(rock);
+              rock.addEventListener('animationend', () => rock.remove());
+            }
+          }, row * 100);
         }
         setTimeout(() => logo.classList.remove('quake'), 600);
       });
