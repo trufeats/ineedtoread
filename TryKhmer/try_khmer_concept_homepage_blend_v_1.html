@@ -107,32 +107,19 @@
       gap: 12px;
       pointer-events: none; opacity: 0.55; z-index: -1;
     }
-    @keyframes tileShift {
-      0%,100% { background: linear-gradient(0deg, #f4f2ea, #f5f0e4); }
-      14% { background: linear-gradient(45deg, #f5f0e4, #ece5d5); }
-      28% { background: linear-gradient(90deg, #ece5d5, #e5d5c1); }
-      42% { background: linear-gradient(135deg, #e5d5c1, #ded1b7); }
-      56% { background: linear-gradient(180deg, #ded1b7, #d9c5aa); }
-      70% { background: linear-gradient(225deg, #d9c5aa, #cdbca2); }
-      84% { background: linear-gradient(270deg, #cdbca2, #f4f2ea); }
-    }
     .bg-tiles .tile {
       width: 90px; height: 90px; border-radius: 16px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(0,0,0,.02);
-      background-size: 200% 200%;
-      animation: tileShift 60s ease-in-out infinite;
+      transition: background 6s ease;
     }
-    .bg-tiles .tile:nth-child(odd) { animation-duration: 80s; }
-    .bg-tiles .tile:nth-child(3n) { animation-duration: 90s; }
-    .bg-tiles .tile:nth-child(4n) { animation-duration: 70s; animation-direction: reverse; }
 
-    .bg-tiles .shade1 { background: #f4f2ea; animation-delay: -0s; }
-    .bg-tiles .shade2 { background: #f5f0e4; animation-delay: -8s; }
-    .bg-tiles .shade3 { background: #ece5d5; animation-delay: -16s; }
-    .bg-tiles .shade4 { background: #e5d5c1; animation-delay: -24s; }
-    .bg-tiles .shade5 { background: #ded1b7; animation-delay: -32s; }
-    .bg-tiles .shade6 { background: #d9c5aa; animation-delay: -40s; }
-    .bg-tiles .shade7 { background: #cdbca2; animation-delay: -48s; }
+    .bg-tiles .shade1 { background: #f4f2ea; }
+    .bg-tiles .shade2 { background: #f5f0e4; }
+    .bg-tiles .shade3 { background: #ece5d5; }
+    .bg-tiles .shade4 { background: #e5d5c1; }
+    .bg-tiles .shade5 { background: #ded1b7; }
+    .bg-tiles .shade6 { background: #d9c5aa; }
+    .bg-tiles .shade7 { background: #cdbca2; }
     @media (max-width: 980px) {
       .bg-tiles { display: none; }
     }
@@ -205,6 +192,26 @@
   <script>
     // Year stamp
     document.getElementById('y').textContent = new Date().getFullYear();
+
+    // Smooth, asynchronous tile color shifts
+    const colors = ['#f4f2ea','#f5f0e4','#ece5d5','#e5d5c1','#ded1b7','#d9c5aa','#cdbca2'];
+    const tiles = document.querySelectorAll('.bg-tiles .tile');
+
+    tiles.forEach((tile, index) => {
+      let i1 = index % colors.length;
+      let i2 = (i1 + 1) % colors.length;
+
+      const update = () => {
+        const angle = Math.floor(Math.random() * 360);
+        tile.style.background = `linear-gradient(${angle}deg, ${colors[i1]}, ${colors[i2]})`;
+        i1 = (i1 + 1) % colors.length;
+        i2 = (i2 + 1) % colors.length;
+        const delay = 4000 + Math.random() * 4000;
+        setTimeout(update, delay);
+      };
+
+      setTimeout(update, index * 300);
+    });
   </script>
 </body>
 </html>
